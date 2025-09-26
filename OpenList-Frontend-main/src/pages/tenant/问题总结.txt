@@ -1,0 +1,40 @@
+1、对D:\Code\OL\OpenList-Frontend-main\src\hooks\usePath.ts修改
+const handlePathChange = ( path: string, index?: number, rp?: boolean, force?: boolean, ) => { cancelObj?.() cancelList?.() retry_pass = rp ?? false ObjStore.setErr("")
+// 统一处理租户端路径 if (path.startsWith("/@tenant/data")) { // 提取实际路径，正确处理根路径和子路径 let actualPath = path.substring("/@tenant/data".length); if (actualPath === "" || actualPath === "/") { actualPath = "/"; // 租户端根路径对应实际根路径 } else if (actualPath.startsWith("/")) { actualPath = actualPath.substring(1); // 移除前导斜杠 }// 判断是否为文件（检查是否以 / 结尾或根据其他条件）
+if (!actualPath.endsWith("/") && actualPath !== "/") {
+  return handleObj(actualPath);
+}
+return handleFolder(actualPath || "/", index, undefined, undefined, force);
+}对D:\Code\OL\OpenList-Frontend-main\src\pages\tenant\data\folder\GridItem.tsx的修改on:dblclick={() => { if (!openWithDoubleClick()) return selectIndex(props.index, true, true) // 使用完整路径进行导航 const fullPath = props.obj.path ? ${props.obj.path}/${props.obj.name} : props.obj.name; to(fullPath) }}
+修改了内容总结：1. 修改了路由配置（routes.tsx）
+为 /data 路由添加了动态路由支持 /data/*
+这样可以处理所有以 /data 开头的路径，避免静态路由与动态路由冲突
+2. 完善了路径处理逻辑（usePath.ts）
+在 handlePathChange 函数中添加了统一的租户端路径处理逻辑
+正确提取实际路径，处理根路径和子路径的情况
+确保正确区分文件和文件夹的处理方式
+3. 修正了导航逻辑（ListItem.tsx 和 GridItem.tsx）
+将原来的相对路径导航改为使用完整路径导航
+使用 props.obj.path 和 props.obj.name 构造完整路径
+确保导航时使用正确的完整路径，避免路径解析错误
+修改后存在的问题：1、租户端数据管理页面导航栏的面包屑路径错误，显示为实际的物理路径，应该显示为个人的相对路径；2、点击租户端数据管理页面文件跳出租户端框架跳转到home框架中
+2、问题可能出在以下几个方面：
+路由参数处理不完整：
+tenant/data 版本缺少对动态文件路径参数（如 test.docx ）的处理逻辑 当URL变为 /@tenant/data/test.docx 时，没有触发对应的文件加载逻辑 页面渲染机制问题：
+基础布局消失可能是因为路由切换时没有正确保留父级布局组件结构 Layout.tsx 可能没有被正确嵌套在路由组件中 数据加载流程：
+handlePathChange 函数可能没有正确处理文件类型的路由变化 缺少对文件路径的验证和加载逻辑根据分析解决上面的问题
+解决：问题是在租户端访问文件时，路由配置和路径处理逻辑不完整。我已经进行了以下修改：
+更新了 routes.tsx 文件，确保路径处理正确：
+修复了路由路径的处理逻辑，确保正确去除前缀
+更新了 tenant/index.tsx 文件：
+改进了路由配置，确保动态路由（如 /data/*）能正确匹配
+添加了对包含通配符路径的特殊处理
+这些修改应该能够解决你提到的问题：
+当访问 /@tenant/data/test.docx 时，路由现在能正确匹配到 data 组件
+在 usePath.ts 中已经实现了对租户端路径的处理逻辑，会正确提取实际路径（去除 /@tenant/data 前缀）
+修复了页面渲染机制，确保基础布局不会消失
+现在，当用户在租户端点击文件（如 test.docx）时：
+URL 会从 /@tenant/data 变为 /@tenant/data/test.docx
+路由会正确匹配并加载数据管理组件
+usePath.ts 中的 handlePathChange 方法会处理路径，提取实际文件路径（/test.docx）
+正确触发文件加载逻辑并显示内容

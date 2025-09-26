@@ -1,0 +1,56 @@
+{
+  "title": "Tenant Portal",
+  "sidemenu": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "access": "Access Management",
+    "data": "Data Management",
+    "certificates": "Certificate Management"
+  },
+  "logout_success": "Logout successful",
+  "dashboard": {
+    "title": "Tenant Dashboard",
+    "welcome": "Welcome",
+    "storage_used": "Storage Used",
+    "bandwidth_used": "Bandwidth Used",
+    "active_users": "Active Users",
+    "recent_activity": "Recent Activity"
+  },
+  "profile": {
+    "title": "Profile",
+    "username": "Username",
+    "role": "Role",
+    "email": "Email",
+    "last_login": "Last Login",
+    "change_password": "Change Password"
+  },
+  "access": {
+    "title": "Access Management",
+    "vpn_info": "OpenVPN Connection Information",
+    "server_ip": "Server IP",
+    "server_port": "Server Port",
+    "protocol": "Protocol",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "certificates": "Certificate Management",
+    "cert_desc": "Your OpenVPN certificate information is displayed here. Ensure you have a valid certificate to access the VPN.",
+    "expires": "Expires",
+    "download_cert": "Download Certificate",
+    "no_certificates": "No Certificates",
+    "no_certificates_desc": "You currently have no available certificates. Please apply for a new certificate to access the VPN service.",
+    "apply_certificate": "Apply Certificate",
+    "certificate_applied": "Certificate application submitted",
+    "download_started": "Certificate download started",
+    "certificates_loaded": "Certificates loaded successfully",
+    "certificate_request": "Certificate Request",
+    "requested_at": "Requested at",
+    "reason": "Reason",
+    "waiting_approval": "Waiting for approval",
+    "certificate_requested": "Certificate requested",
+    "waiting_approval_desc": "Your certificate request has been submitted and is awaiting administrator approval. Certificate information will be displayed here once approved."
+  },
+  "data": {
+    "title": "Data Management"
+  }
+}

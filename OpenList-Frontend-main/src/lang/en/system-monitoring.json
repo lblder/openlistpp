@@ -1,0 +1,7 @@
+{
+  "title": "System Monitoring",
+  "cpu_usage": "CPU Usage",
+  "memory_usage": "Memory Usage",
+  "disk_usage": "Disk Usage",
+  "network_traffic": "Network Traffic"
+}
