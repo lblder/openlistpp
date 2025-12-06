@@ -34,6 +34,12 @@ export const side_menu_items: SideMenuItem[] = [
     component: lazy(() => import("./security")),
   },
   {
+    title: "数据安全保障",
+    icon: BsShieldLock,
+    to: "/keti1/data-security",
+    component: lazy(() => import("./data-security")),
+  },
+  {
     title: "数据集成",
     icon: BsBucket,
     to: "/keti1/integration",
