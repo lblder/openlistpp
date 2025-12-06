@@ -139,6 +139,124 @@ export const updateICSDevicePoint = (id: number, data: any): Promise<PResp<ICSDe
   return r.put(`/keti1/ics-device-point/update/${id}`, data)
 }
 
-export const deleteICSDevicePoint = (id: number): Promise<PResp<null>> => {
-  return r.delete(`/keti1/ics-device-point/delete/${id}`)
+// 安全配置模式相关接口 (SecConfigMode)
+export interface SecConfigMode {
+  id?: number
+  mode_name: string
+  description: string
+  created_at?: string
+}
+
+// 安全防护规则相关接口 (SecFirewallRule)
+export interface SecFirewallRule {
+  id?: number
+  rule_name: string
+  direction: string // INPUT/OUTPUT
+  protocol: string  // tcp/udp/icmp/all
+  src_ip: string    // 0.0.0.0/0
+  dst_port: string
+  action: string    // ACCEPT/DROP/REJECT
+  is_active: number // 1/0
+}
+
+// 策略编排关联相关接口
+export interface SecModeRuleRelation {
+  id?: number
+  mode_id: number
+  rule_id: number
+  sort_order: number
+  mode?: SecConfigMode
+  rule?: SecFirewallRule
+}
+
+// 安全配置模式 API
+export const getSecConfigModes = (page = 1, per_page = 10): Promise<PResp<SecConfigMode[]>> => {
+  return r.get("/keti1/sec-config-mode/list", { params: { page, per_page } })
+}
+
+export const getSecConfigMode = (id: number): Promise<PResp<SecConfigMode>> => {
+  return r.get(`/keti1/sec-config-mode/get/${id}`)
+}
+
+export const createSecConfigMode = (data: any): Promise<PResp<SecConfigMode>> => {
+  return r.post("/keti1/sec-config-mode/create", data)
+}
+
+export const updateSecConfigMode = (id: number, data: any): Promise<PResp<SecConfigMode>> => {
+  return r.put(`/keti1/sec-config-mode/update/${id}`, data)
+}
+
+export const deleteSecConfigMode = (id: number): Promise<PResp<null>> => {
+  return r.delete(`/keti1/sec-config-mode/delete/${id}`)
+}
+
+// 安全防护规则 API
+export const getSecFirewallRules = (page = 1, per_page = 10): Promise<PResp<SecFirewallRule[]>> => {
+  return r.get("/keti1/sec-firewall-rule/list", { params: { page, per_page } })
+}
+
+export const getSecFirewallRule = (id: number): Promise<PResp<SecFirewallRule>> => {
+  return r.get(`/keti1/sec-firewall-rule/get/${id}`)
+}
+
+export const createSecFirewallRule = (data: any): Promise<PResp<SecFirewallRule>> => {
+  return r.post("/keti1/sec-firewall-rule/create", data)
+}
+
+export const updateSecFirewallRule = (id: number, data: any): Promise<PResp<SecFirewallRule>> => {
+  return r.put(`/keti1/sec-firewall-rule/update/${id}`, data)
+}
+
+export const deleteSecFirewallRule = (id: number): Promise<PResp<null>> => {
+  return r.delete(`/keti1/sec-firewall-rule/delete/${id}`)
+}
+
+export const deleteSecFirewallRules = (ids: number[]): Promise<PResp<null>> => {
+  return r.post(`/keti1/sec-firewall-rule/batch_delete`, { ids })
+}
+
+export const importSecFirewallRules = (file: File): Promise<PResp<any>> => {
+  const formData = new FormData()
+  formData.append("file", file)
+  return r.post("/keti1/sec-firewall-rule/import", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  })
+}
+
+export const downloadSecFirewallRuleTemplate = (format: 'csv' | 'json') => {
+  const url = `/api/keti1/sec-firewall-rule/template?format=${format}`
+  window.open(url, '_blank')
+}
+
+// 策略编排 API
+export const getModeRules = (mode_id: number): Promise<PResp<SecFirewallRule[]>> => {
+  return r.get(`/keti1/sec-orchestration/list-rules/${mode_id}`)
+}
+
+export const assignRuleToMode = (mode_id: number, rule_id: number): Promise<PResp<any>> => {
+  return r.post("/keti1/sec-orchestration/assign", { mode_id, rule_id })
+}
+
+export const removeRuleFromMode = (mode_id: number, rule_id: number): Promise<PResp<any>> => {
+  return r.post("/keti1/sec-orchestration/remove", { mode_id, rule_id })
+}
+
+export const reorderModeRules = (mode_id: number, rule_ids: number[]): Promise<PResp<any>> => {
+  return r.post("/keti1/sec-orchestration/reorder", { mode_id, rule_ids })
+}
+
+export const downloadSecConfigModeScript = (mode_id: number) => {
+  const url = `/api/keti1/sec-orchestration/export-script/${mode_id}`
+  window.open(url, '_blank')
+}
+
+export const generateIptablesCommand = (rule: SecFirewallRule): string => {
+  let cmd = `iptables -A ${rule.direction}`
+  if (rule.protocol) cmd += ` -p ${rule.protocol}`
+  if (rule.src_ip && rule.src_ip !== '0.0.0.0/0') cmd += ` -s ${rule.src_ip}`
+  if (rule.dst_port) cmd += ` --dport ${rule.dst_port}`
+  if (rule.action) cmd += ` -j ${rule.action}`
+  return cmd
 }
