@@ -12,17 +12,7 @@ import * as addonApi from "~/utils/addon";
 import { useManageTitle } from "~/hooks";
 
 // 类型定义 - 与后端 addon_models.go 保持一致
-interface SecurityStrategy {
-    id?: number;
-    name: string;
-    category: string;      // 策略分类
-    level: string;         // 策略级别：高/中/低
-    params?: any;          // 策略参数（JSON）
-    description: string;
-    status: number;        // 状态：1=启用，0=禁用
-    created_at?: string;
-    updated_at?: string;
-}
+
 
 interface ICSProtocol {
     id?: number;
@@ -69,17 +59,7 @@ const DataSecurityManagement: Component = () => {
     const [isModalOpen, setIsModalOpen] = createSignal(false);
     const [formErrors, setFormErrors] = createSignal<{ [key: string]: string }>({});
 
-    // 安全策略相关状态
-    const [strategies, setStrategies] = createSignal<SecurityStrategy[]>([]);
-    const [currentStrategy, setCurrentStrategy] = createSignal<SecurityStrategy | null>(null);
-    const [strategyForm, setStrategyForm] = createSignal<SecurityStrategy>({
-        name: "",
-        category: "",
-        level: "",
-        params: {},
-        description: "",
-        status: 1
-    });
+
 
     // 工控协议相关状态
     const [protocols, setProtocols] = createSignal<ICSProtocol[]>([]);
@@ -117,20 +97,7 @@ const DataSecurityManagement: Component = () => {
     });
 
     // 加载数据
-    const loadStrategies = async () => {
-        setLoading(true);
-        try {
-            const resp: any = await addonApi.getSecurityStrategies();
-            handleResp(resp, (data: any) => {
-                setStrategies(data.content || data || []);
-            });
-        } catch (error) {
-            console.error('加载安全策略失败:', error);
-            setStrategies([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     const loadProtocols = async () => {
         setLoading(true);
@@ -179,20 +146,13 @@ const DataSecurityManagement: Component = () => {
 
     // 初始化加载所有数据
     createEffect(() => {
-        loadStrategies();
         loadProtocols();
         loadDevices();
         loadPoints();
     });
 
     // 表单验证
-    const validateStrategyForm = () => {
-        const errors: { [key: string]: string } = {};
-        if (!strategyForm().name) errors.name = "策略名称不能为空";
-        if (!strategyForm().level) errors.level = "策略级别不能为空";
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
+
 
     const validateProtocolForm = () => {
         const errors: { [key: string]: string } = {};
@@ -218,30 +178,7 @@ const DataSecurityManagement: Component = () => {
     };
 
     // 表单提交
-    const handleStrategySubmit = async () => {
-        if (!validateStrategyForm()) return;
-        setLoading(true);
-        try {
-            const form = strategyForm();
-            if (currentStrategy()) {
-                const resp: any = await addonApi.updateSecurityStrategy(currentStrategy()!.id!, form);
-                handleResp(resp, () => {
-                    notify.success("策略更新成功");
-                    loadStrategies();
-                    closeModal();
-                });
-            } else {
-                const resp: any = await addonApi.createSecurityStrategy(form);
-                handleResp(resp, () => {
-                    notify.success("策略创建成功");
-                    loadStrategies();
-                    closeModal();
-                });
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     const handleProtocolSubmit = async () => {
         if (!validateProtocolForm()) return;
@@ -319,20 +256,7 @@ const DataSecurityManagement: Component = () => {
     };
 
     // 删除操作
-    const deleteStrategy = async (id: number) => {
-        if (confirm("确认删除该安全策略吗？")) {
-            setLoading(true);
-            try {
-                const resp: any = await addonApi.deleteSecurityStrategy(id);
-                handleResp(resp, () => {
-                    notify.success("策略删除成功");
-                    loadStrategies();
-                });
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
+
 
     const deleteProtocol = async (id: number) => {
         if (confirm("确认删除该工控协议吗？")) {
@@ -385,15 +309,12 @@ const DataSecurityManagement: Component = () => {
     const openAddModal = () => {
         setFormErrors({});
         if (activeTab() === 0) {
-            setCurrentStrategy(null);
-            setStrategyForm({ name: "", category: "", level: "", params: {}, description: "", status: 1 });
-        } else if (activeTab() === 1) {
             setCurrentProtocol(null);
             setProtocolForm({ name: "", version: "", scene: "", remark: "", status: 1 });
-        } else if (activeTab() === 2) {
+        } else if (activeTab() === 1) {
             setCurrentDevice(null);
             setDeviceForm({ device_name: "", protocol_id: 0, scene: "", remark: "", status: 1 });
-        } else if (activeTab() === 3) {
+        } else if (activeTab() === 2) {
             setCurrentPoint(null);
             setPointForm({ point_name: "", device_id: 0, point_type: "", address: "", unit: "", tags: "", status: 1 });
         }
@@ -403,15 +324,12 @@ const DataSecurityManagement: Component = () => {
     const openEditModal = (item: any) => {
         setFormErrors({});
         if (activeTab() === 0) {
-            setCurrentStrategy(item);
-            setStrategyForm({ ...item });
-        } else if (activeTab() === 1) {
             setCurrentProtocol(item);
             setProtocolForm({ ...item });
-        } else if (activeTab() === 2) {
+        } else if (activeTab() === 1) {
             setCurrentDevice(item);
             setDeviceForm({ ...item });
-        } else if (activeTab() === 3) {
+        } else if (activeTab() === 2) {
             setCurrentPoint(item);
             setPointForm({ ...item });
         }
@@ -423,8 +341,8 @@ const DataSecurityManagement: Component = () => {
     };
 
     const getModalTitle = () => {
-        const action = currentStrategy() || currentProtocol() || currentDevice() || currentPoint() ? "编辑" : "新增";
-        const type = activeTab() === 0 ? "安全策略" : activeTab() === 1 ? "工控协议" : activeTab() === 2 ? "工控设备" : "设备场量点";
+        const action = currentProtocol() || currentDevice() || currentPoint() ? "编辑" : "新增";
+        const type = activeTab() === 0 ? "工控协议" : activeTab() === 1 ? "工控设备" : "设备场量点";
         return `${action}${type}`;
     };
 
@@ -434,10 +352,9 @@ const DataSecurityManagement: Component = () => {
 
             <VStack spacing="$4" alignItems="stretch">
                 <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2">
-                    <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>安全策略管理</Button>
-                    <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>工控协议管理</Button>
-                    <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>工控设备管理</Button>
-                    <Button variant={activeTab() === 3 ? "solid" : "ghost"} colorScheme={activeTab() === 3 ? "primary" : "neutral"} onClick={() => setActiveTab(3)}>设备场量点管理</Button>
+                    <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>工控协议管理</Button>
+                    <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>工控设备管理</Button>
+                    <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>设备场量点管理</Button>
                 </HStack>
 
                 {/* 顶部操作栏 */}
@@ -448,50 +365,10 @@ const DataSecurityManagement: Component = () => {
                 </HStack>
 
                 {/* 安全策略管理面板 */}
-                <Show when={activeTab() === 0}>
-                    <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
-                        <Table dense>
-                            <Thead>
-                                <Tr>
-                                    <Th>ID</Th>
-                                    <Th>策略名称</Th>
-                                    <Th>分类</Th>
-                                    <Th>级别</Th>
-                                    <Th>状态</Th>
-                                    <Th>创建时间</Th>
-                                    <Th>操作</Th>
-                                </Tr>
-                            </Thead>
-                            <Tbody>
-                                <For each={strategies()}>
-                                    {(strategy) => (
-                                        <Tr>
-                                            <Td>{strategy.id}</Td>
-                                            <Td>{strategy.name}</Td>
-                                            <Td>{strategy.category}</Td>
-                                            <Td>{strategy.level}</Td>
-                                            <Td>
-                                                <Badge colorScheme={strategy.status === 1 ? "success" : "danger"}>
-                                                    {strategy.status === 1 ? "启用" : "禁用"}
-                                                </Badge>
-                                            </Td>
-                                            <Td>{strategy.created_at}</Td>
-                                            <Td>
-                                                <HStack spacing="$2">
-                                                    <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal(strategy)} />
-                                                    <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => deleteStrategy(strategy.id!)} />
-                                                </HStack>
-                                            </Td>
-                                        </Tr>
-                                    )}
-                                </For>
-                            </Tbody>
-                        </Table>
-                    </Box>
-                </Show>
+
 
                 {/* 工控协议管理面板 */}
-                <Show when={activeTab() === 1}>
+                <Show when={activeTab() === 0}>
                     <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
                         <Table dense>
                             <Thead>
@@ -534,7 +411,7 @@ const DataSecurityManagement: Component = () => {
                 </Show>
 
                 {/* 工控设备管理面板 */}
-                <Show when={activeTab() === 2}>
+                <Show when={activeTab() === 1}>
                     <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
                         <Table dense>
                             <Thead>
@@ -577,7 +454,7 @@ const DataSecurityManagement: Component = () => {
                 </Show>
 
                 {/* 设备场量点管理面板 */}
-                <Show when={activeTab() === 3}>
+                <Show when={activeTab() === 2}>
                     <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
                         <Table dense>
                             <Thead>
@@ -629,75 +506,11 @@ const DataSecurityManagement: Component = () => {
                     <ModalBody>
                         <VStack spacing="$4">
                             {/* 安全策略表单 */}
-                            <Show when={activeTab() === 0}>
-                                <FormControl invalid={!!formErrors().name}>
-                                    <FormLabel>策略名称</FormLabel>
-                                    <Input value={strategyForm().name} onInput={(e) => setStrategyForm({ ...strategyForm(), name: e.currentTarget.value })} />
-                                    <FormErrorMessage>{formErrors().name}</FormErrorMessage>
-                                </FormControl>
-                                <FormControl>
-                                    <FormLabel>策略分类</FormLabel>
-                                    <Input value={strategyForm().category} onInput={(e) => setStrategyForm({ ...strategyForm(), category: e.currentTarget.value })} />
-                                </FormControl>
-                                <FormControl invalid={!!formErrors().level}>
-                                    <FormLabel>策略级别</FormLabel>
-                                    <select
-                                        class="hope-select"
-                                        style={{
-                                            "background-color": "var(--hope-colors-neutral3)",
-                                            "border-color": "transparent",
-                                            "color": "var(--hope-colors-neutral12)",
-                                            "height": "2.5rem",
-                                            "padding-inline-start": "1rem",
-                                            "padding-inline-end": "2rem",
-                                            "border-radius": "var(--hope-radii-md)",
-                                            "font-size": "var(--hope-fontSizes-sm)",
-                                            "outline": "none",
-                                            "border-width": "1px",
-                                            "transition": "border-color 200ms"
-                                        }}
-                                        value={strategyForm().level}
-                                        onChange={(e) => setStrategyForm({ ...strategyForm(), level: e.currentTarget.value })}
-                                    >
-                                        <option value="">选择级别</option>
-                                        <option value="高">高</option>
-                                        <option value="中">中</option>
-                                        <option value="低">低</option>
-                                    </select>
-                                    <FormErrorMessage>{formErrors().level}</FormErrorMessage>
-                                </FormControl>
-                                <FormControl>
-                                    <FormLabel>状态</FormLabel>
-                                    <select
-                                        class="hope-select"
-                                        style={{
-                                            "background-color": "var(--hope-colors-neutral3)",
-                                            "border-color": "transparent",
-                                            "color": "var(--hope-colors-neutral12)",
-                                            "height": "2.5rem",
-                                            "padding-inline-start": "1rem",
-                                            "padding-inline-end": "2rem",
-                                            "border-radius": "var(--hope-radii-md)",
-                                            "font-size": "var(--hope-fontSizes-sm)",
-                                            "outline": "none",
-                                            "border-width": "1px",
-                                            "transition": "border-color 200ms"
-                                        }}
-                                        value={String(strategyForm().status)}
-                                        onChange={(e) => setStrategyForm({ ...strategyForm(), status: parseInt(e.currentTarget.value) })}
-                                    >
-                                        <option value="1">启用</option>
-                                        <option value="0">禁用</option>
-                                    </select>
-                                </FormControl>
-                                <FormControl>
-                                    <FormLabel>描述</FormLabel>
-                                    <Textarea value={strategyForm().description} onInput={(e) => setStrategyForm({ ...strategyForm(), description: e.currentTarget.value })} />
-                                </FormControl>
-                            </Show>
+
 
                             {/* 工控协议表单 */}
-                            <Show when={activeTab() === 1}>
+                            {/* 工控协议表单 */}
+                            <Show when={activeTab() === 0}>
                                 <FormControl invalid={!!formErrors().name}>
                                     <FormLabel>协议名称</FormLabel>
                                     <Input value={protocolForm().name} onInput={(e) => setProtocolForm({ ...protocolForm(), name: e.currentTarget.value })} />
@@ -742,7 +555,8 @@ const DataSecurityManagement: Component = () => {
                             </Show>
 
                             {/* 工控设备表单 */}
-                            <Show when={activeTab() === 2}>
+                            {/* 工控设备表单 */}
+                            <Show when={activeTab() === 1}>
                                 <FormControl invalid={!!formErrors().device_name}>
                                     <FormLabel>设备名称</FormLabel>
                                     <Input value={deviceForm().device_name} onInput={(e) => setDeviceForm({ ...deviceForm(), device_name: e.currentTarget.value })} />
@@ -812,7 +626,8 @@ const DataSecurityManagement: Component = () => {
                             </Show>
 
                             {/* 设备场量点表单 */}
-                            <Show when={activeTab() === 3}>
+                            {/* 设备场量点表单 */}
+                            <Show when={activeTab() === 2}>
                                 <FormControl invalid={!!formErrors().point_name}>
                                     <FormLabel>场量名称</FormLabel>
                                     <Input value={pointForm().point_name} onInput={(e) => setPointForm({ ...pointForm(), point_name: e.currentTarget.value })} />
@@ -891,10 +706,9 @@ const DataSecurityManagement: Component = () => {
                             <Button onClick={closeModal} variant="subtle">取消</Button>
                             <Button
                                 onClick={() => {
-                                    if (activeTab() === 0) handleStrategySubmit();
-                                    else if (activeTab() === 1) handleProtocolSubmit();
-                                    else if (activeTab() === 2) handleDeviceSubmit();
-                                    else if (activeTab() === 3) handlePointSubmit();
+                                    if (activeTab() === 0) handleProtocolSubmit();
+                                    else if (activeTab() === 1) handleDeviceSubmit();
+                                    else if (activeTab() === 2) handlePointSubmit();
                                 }}
                                 loading={loading()}
                                 leftIcon={<Icon as={BiSolidSave} />}

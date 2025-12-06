@@ -139,6 +139,10 @@ export const updateICSDevicePoint = (id: number, data: any): Promise<PResp<ICSDe
   return r.put(`/keti1/ics-device-point/update/${id}`, data)
 }
 
+export const deleteICSDevicePoint = (id: number): Promise<PResp<null>> => {
+  return r.delete(`/keti1/ics-device-point/delete/${id}`)
+}
+
 // 安全配置模式相关接口 (SecConfigMode)
 export interface SecConfigMode {
   id?: number
