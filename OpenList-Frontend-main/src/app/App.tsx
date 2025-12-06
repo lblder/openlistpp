@@ -19,10 +19,12 @@ import { base_path, bus, handleRespWithoutAuthAndNotify, r } from "~/utils"
 import { MustUser, UserOrGuest } from "./MustUser"
 import "./index.css"
 import { globalStyles } from "./theme"
+import { StrictlyMustUser } from "./StrictlyMustUser"
 
 const Home = lazy(() => import("~/pages/home/Layout"))
 const Manage = lazy(() => import("~/pages/manage"))
 const Tenant = lazy(() => import("~/pages/tenant"))
+const Keti1 = lazy(() => import("~/pages/keti1"))
 const Login = lazy(() => import("~/pages/login"))
 const Test = lazy(() => import("~/pages/test"))
 
@@ -87,33 +89,41 @@ const App: Component = () => {
             <Route
               path="/@manage/*"
               element={
-                <MustUser>
+                <StrictlyMustUser>
                   <Manage />
-                </MustUser>
+                </StrictlyMustUser>
               }
             />
             <Route
               path="/@tenant/*"
               element={
-                <MustUser>
+                <StrictlyMustUser>
                   <Tenant />
-                </MustUser>
+                </StrictlyMustUser>
               }
             />
             <Route
               path={["/@s/*", "/%40s/*"]}
               element={
-                <UserOrGuest>
+                <StrictlyMustUser>
                   <Home />
+                </StrictlyMustUser>
+              }
+            />
+            <Route
+              path="/keti1/*"
+              element={
+                <UserOrGuest>
+                  <Keti1 />
                 </UserOrGuest>
               }
             />
             <Route
               path="*"
               element={
-                <MustUser>
+                <StrictlyMustUser>
                   <Home />
-                </MustUser>
+                </StrictlyMustUser>
               }
             />
           </Routes>

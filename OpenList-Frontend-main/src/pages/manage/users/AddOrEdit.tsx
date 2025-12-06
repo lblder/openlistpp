@@ -151,7 +151,7 @@ const AddOrEdit = () => {
             const resp = await ok()
             // TODO maybe can use handleRespWithNotifySuccess
             handleResp(resp, async () => {
-              notify.success(t("global.save_success"))
+              notify.success(t("global.operation_success"))
               if (user.username === me().username)
                 handleResp(await (r.get("/me") as PResp<Me>), setMe)
               back()

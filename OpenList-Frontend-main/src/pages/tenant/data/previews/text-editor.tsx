@@ -36,7 +36,7 @@ function Editor(props: { data?: string | ArrayBuffer; contentType?: string }) {
   async function onSave() {
     const resp = await save()
     handleResp(resp, () => {
-      notify.success(t("global.save_success"))
+      notify.success(t("global.operation_success"))
     })
   }
 

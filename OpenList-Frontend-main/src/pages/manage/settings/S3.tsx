@@ -118,7 +118,7 @@ const S3Settings = () => {
             }
             const resp = await saveSettings()
             handleResp(resp, async () => {
-              notify.success(t("global.save_success"))
+              notify.success(t("global.operation_success"))
               handleRespWithoutAuthAndNotify(
                 (await r.get("/public/settings")) as Resp<
                   Record<string, string>

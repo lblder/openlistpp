@@ -15,6 +15,7 @@ import tasks from "./tasks.json"
 import users from "./users.json"
 import system_monitoring from "./system-monitoring.json"
 import network_control from "./network-control.json"
+import tenant from "./tenant.json"
 
 export const dict = {
   br,
@@ -34,4 +35,5 @@ export const dict = {
   users,
   "system-monitoring": system_monitoring,
   "network-control": network_control,
+  tenant,
 }

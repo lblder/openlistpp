@@ -122,9 +122,12 @@ export const usePath = () => {
   const handleObj = async (path: string, index?: number) => {
     ObjStore.setState(State.FetchingObj)
     // 租户端路径处理：移除 /@tenant/data 前缀
+    // keti1路径处理：移除 /keti1/data 前缀
     let apiPath = path
-    if (path.startsWith("/@tenant/data")) {
+    if (path && path.startsWith("/@tenant/data")) {
       apiPath = path.substring("/@tenant/data".length) || "/"
+    // } else if (path && path.startsWith("/keti1/data")) {
+    //   apiPath = path.substring("/keti1/data".length) || "/"
     }
     const resp = await getObj(apiPath)
     handleRespWithoutNotify(
@@ -164,7 +167,7 @@ export const usePath = () => {
     ObjStore.setState(append ? State.FetchingMore : State.FetchingObjs)
     // 租户端路径处理：移除 /@tenant/data 前缀
     let apiPath = path
-    if (path.startsWith("/@tenant/data")) {
+    if (path && path.startsWith("/@tenant/data")) {
       apiPath = path.substring("/@tenant/data".length) || "/"
     }
     const resp = await getObjs({ path: apiPath, index, size, force })

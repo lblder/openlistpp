@@ -31,6 +31,11 @@ go build -o openlist.exe .
 
 # 停止服务（如果使用 start 启动）
 .\openlist.exe stop
+
+# 随机生成管理员密码
+go run main.go admin random
+
+go run main.go admin set admin123
 ```
 
 切换前端并编译

@@ -1,6 +1,6 @@
 import {
   Box,
-  Button,
+  Center,
   createDisclosure,
   Drawer,
   DrawerBody,
@@ -11,9 +11,7 @@ import {
   Flex,
   Heading,
   HStack,
-  Icon,
   IconButton,
-  Text,
   useColorModeValue,
 } from "@hope-ui/solid"
 import { TiThMenu } from "solid-icons/ti"

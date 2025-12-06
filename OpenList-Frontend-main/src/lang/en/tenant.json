@@ -5,7 +5,10 @@
     "profile": "Profile",
     "access": "Access Management",
     "data": "Data Management",
-    "certificates": "Certificate Management"
+    "certificates": "Certificate Management",
+    "data.credentials": "Credentials",
+    "data.business": "Business Data",
+    "data.tools": "Tools"
   },
   "logout_success": "Logout successful",
   "dashboard": {
@@ -51,6 +54,91 @@
     "waiting_approval_desc": "Your certificate request has been submitted and is awaiting administrator approval. Certificate information will be displayed here once approved."
   },
   "data": {
-    "title": "Data Management"
+    "title": "Data Management",
+    "files": "Files",
+    "upload": "Upload File",
+    "upload_success": "File uploaded successfully",
+    "upload_failed": "File upload failed",
+    "download": "Download",
+    "delete": "Delete",
+    "filename": "Filename",
+    "size": "Size",
+    "modified": "Modified",
+    "actions": "Actions",
+    "confirm_delete": "Are you sure you want to delete this file?",
+    "delete_success": "File deleted successfully",
+    "no_files": "No Files",
+    "no_files_desc": "No files in the current directory. You can upload new files.",
+    "search_placeholder": "Search files...",
+    "refresh": "Refresh",
+    "select_file": "Select File",
+    "uploading": "Uploading...",
+    "credentials": {
+      "title": "Credentials",
+      "description": "Manage your account and access credentials",
+      "user_id": "User ID",
+      "user_id_placeholder": "Please enter user ID",
+      "user_id_required": "User ID is required",
+      "access_key": "Access Key",
+      "password": "Password",
+      "password_placeholder": "Please enter password",
+      "password_edit_placeholder": "Leave blank to keep current password",
+      "password_required": "Password is required",
+      "password_min_length": "Password must be at least 8 characters",
+      "mfa_status": "Multi-Factor Authentication",
+      "created_at": "Created At",
+      "confirm_delete": "Are you sure you want to delete this credential?",
+      "no_credentials": "No Credentials",
+      "no_credentials_desc": "You haven't added any credentials yet. Click the \"Add\" button to create a new credential.",
+      "add_credential": "Add Credential",
+      "edit_credential": "Edit Credential"
+    },
+    "business": {
+      "title": "Business Data",
+      "description": "Manage and analyze your business-related data",
+      "name": "Name",
+      "type": "Type",
+      "size": "Size",
+      "path": "Path",
+      "last_modified": "Last Modified",
+      "upload": "Upload Data",
+      "confirm_delete": "Are you sure you want to delete this data asset?",
+      "no_data": "No Data",
+      "no_data_desc": "You don't have any business data yet. You can upload data files.",
+      "types": {
+        "all": "All",
+        "image": "Image",
+        "document": "Document",
+        "config": "Configuration",
+        "log": "Log File",
+        "dataset": "Dataset"
+      }
+    },
+    "tools": {
+      "title": "Tools",
+      "description": "Access and manage your software tools",
+      "name": "Name",
+      "type": "Type",
+      "version": "Version",
+      "status": "Status",
+      "source": "Source",
+      "install": "Install",
+      "uninstall": "Uninstall",
+      "confirm_delete": "Are you sure you want to delete this tool?",
+      "no_tools": "No Tools",
+      "no_tools_desc": "You haven't added any software tools yet.",
+      "types": {
+        "all": "All",
+        "script": "Script",
+        "package": "Package",
+        "repository": "Repository",
+        "ide": "IDE"
+      },
+      "status_values": {
+        "installed": "Installed",
+        "not_installed": "Not Installed",
+        "deprecated": "Deprecated"
+      }
+    }
   }
 }

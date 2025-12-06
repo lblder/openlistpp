@@ -59,10 +59,13 @@ const Tenant = () => {
                     )
                   }
                   // 处理其他可能包含动态参数的路由
-                  if (route.to.includes("/*")) {
+                  if (route.to && route.to.includes("/*")) {
                     return <Route path={route.to} component={route.component} />
                   }
-                  return <Route path={route.to} component={route.component} />
+                  if (route.to) {
+                    return <Route path={route.to} component={route.component} />
+                  }
+                  return null
                 }}
               </For>
             </Routes>

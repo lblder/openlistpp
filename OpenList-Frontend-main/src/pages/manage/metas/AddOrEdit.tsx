@@ -170,7 +170,7 @@ const AddOrEdit = () => {
             const resp = await ok()
             // TODO maybe can use handleRrespWithNotifySuccess
             handleResp(resp, () => {
-              notify.success(t("global.save_success"))
+              notify.success(t("global.operation_success"))
               back()
             })
           }}
