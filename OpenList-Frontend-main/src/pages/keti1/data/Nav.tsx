@@ -82,7 +82,7 @@ export const Nav = () => {
           const href = encodePath(path)
           let text = () => name
           if (!isShare() && text() === "") {
-            text = () => getSetting("home_icon") + "数据管理"
+            text = () => getSetting("home_icon") + "数据集成"
           } else if (isShare() && i() === 0) {
             text = () => getSetting("share_icon") + t("manage.sidemenu.shares")
           }

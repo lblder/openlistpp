@@ -12,6 +12,7 @@ import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave, BiRegularChe
 import { notify, handleResp } from "~/utils";
 import * as addonApi from "~/utils/addon";
 import { useManageTitle } from "~/hooks";
+import { Paginator } from "~/components/Paginator";
 
 const SecurityConfiguration: Component = () => {
   useManageTitle("系统安全配置与策略管理");
@@ -31,6 +32,9 @@ const SecurityConfiguration: Component = () => {
   const [modes, setModes] = createSignal<addonApi.SecConfigMode[]>([]);
   const [rules, setRules] = createSignal<addonApi.SecFirewallRule[]>([]);
   const [selectedRuleIds, setSelectedRuleIds] = createSignal<number[]>([]);
+  const [rulePage, setRulePage] = createSignal(1);
+  const [rulePageSize, setRulePageSize] = createSignal(7);
+  const [ruleTotal, setRuleTotal] = createSignal(0);
 
   // 编排相关状态
   const [selectedModeId, setSelectedModeId] = createSignal<number | null>(null);
@@ -71,12 +75,13 @@ const SecurityConfiguration: Component = () => {
 
 
 
-  const loadRules = async () => {
+  const loadRules = async (page = rulePage(), size = rulePageSize()) => {
     setLoading(true);
     try {
-      const resp: any = await addonApi.getSecFirewallRules(1, 100);
+      const resp: any = await addonApi.getSecFirewallRules(page, size);
       handleResp(resp, (data: any) => {
         setRules(data.content || []);
+        setRuleTotal(data.total || 0);
         setSelectedRuleIds([]); // 重置选中的规则
       });
     } finally {
@@ -154,7 +159,7 @@ const SecurityConfiguration: Component = () => {
 
   const openAssignModal = () => {
     if (!selectedModeId()) {
-      notify.warning("请先选择一个配置模式");
+      notify.warning("请先选择一个任务维度");
       return;
     }
     // 过滤掉已经分配的规则 (简单处理，如果不需过滤可去掉)
@@ -165,10 +170,22 @@ const SecurityConfiguration: Component = () => {
     setIsAssignModalOpen(true);
   };
 
+  // 排序处理
+  const handleRulePageChange = (page: number) => {
+    setRulePage(page);
+    loadRules(page, rulePageSize());
+  };
+
+  const handleRulePageSizeChange = (size: number) => {
+    setRulePageSize(size);
+    setRulePage(1);
+    loadRules(1, size);
+  };
+
   // 提交处理
   const handleModeSubmit = async () => {
     if (!modeForm().mode_name) {
-      setFormErrors({ mode_name: "模式名称不能为空" });
+      setFormErrors({ mode_name: "任务名称不能为空" });
       return;
     }
     setLoading(true);
@@ -195,7 +212,7 @@ const SecurityConfiguration: Component = () => {
 
   const handleRuleSubmit = async () => {
     if (!ruleForm().rule_name) {
-      setFormErrors({ rule_name: "规则名称不能为空" });
+      setFormErrors({ rule_name: "策略名称不能为空" });
       return;
     }
     setLoading(true);
@@ -222,14 +239,14 @@ const SecurityConfiguration: Component = () => {
 
   const handleAssignRule = async () => {
     if (!selectedRuleToAssign()) {
-      notify.warning("请选择要添加的规则");
+      notify.warning("请选择要添加的策略");
       return;
     }
     setLoading(true);
     try {
       const resp: any = await addonApi.assignRuleToMode(selectedModeId()!, selectedRuleToAssign()!);
       handleResp(resp, () => {
-        notify.success("添加规则成功");
+        notify.success("添加策略成功");
         loadModeRules(selectedModeId()!);
         setIsAssignModalOpen(false);
       });
@@ -240,7 +257,7 @@ const SecurityConfiguration: Component = () => {
 
   // 删除处理
   const handleDeleteMode = async (id: number) => {
-    if (confirm("确定要删除此模式吗？关联的编排关系也将被删除。")) {
+    if (confirm("确定要删除此任务吗？关联的编排关系也将被删除。")) {
       const resp: any = await addonApi.deleteSecConfigMode(id);
       handleResp(resp, () => {
         notify.success("删除成功");
@@ -251,7 +268,7 @@ const SecurityConfiguration: Component = () => {
   };
 
   const handleDeleteRule = async (id: number) => {
-    if (confirm("确定要删除此规则吗？")) {
+    if (confirm("确定要删除此策略吗？")) {
       const resp: any = await addonApi.deleteSecFirewallRule(id);
       handleResp(resp, () => {
         notify.success("删除成功");
@@ -262,7 +279,7 @@ const SecurityConfiguration: Component = () => {
 
   const handleBatchDeleteRules = async () => {
     if (selectedRuleIds().length === 0) return;
-    if (confirm(`确定要删除选中的 ${selectedRuleIds().length} 条规则吗？`)) {
+    if (confirm(`确定要删除选中的 ${selectedRuleIds().length} 条策略吗？`)) {
       setLoading(true);
       try {
         const resp: any = await addonApi.deleteSecFirewallRules(selectedRuleIds());
@@ -293,7 +310,7 @@ const SecurityConfiguration: Component = () => {
   };
 
   const handleRemoveRuleFromMode = async (ruleId: number) => {
-    if (confirm("确定要从该模式移除此规则吗？")) {
+    if (confirm("确定要从该任务移除此策略吗？")) {
       const resp: any = await addonApi.removeRuleFromMode(selectedModeId()!, ruleId);
       handleResp(resp, () => {
         notify.success("移除成功");
@@ -333,25 +350,41 @@ const SecurityConfiguration: Component = () => {
         <Text fontSize="$xl" fontWeight="$bold">系统安全配置与策略管理</Text>
       </HStack>
 
-      <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2">
-        <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>配置模式管理</Button>
-        <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>防护规则管理</Button>
-        <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>策略编排</Button>
+      <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2" justifyContent="space-between">
+        <HStack spacing="$2">
+          <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>任务维度管理</Button>
+          <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>安全防护策略</Button>
+          <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>安全配置管理</Button>
+        </HStack>
+
+        {/* 右侧操作按钮 */}
+        <HStack spacing="$2">
+          <Show when={activeTab() === 0}>
+            <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddMode}>新增任务</Button>
+          </Show>
+          <Show when={activeTab() === 1}>
+            <Show when={selectedRuleIds().length > 0}>
+              <Button leftIcon={<Icon as={BiSolidTrash} />} colorScheme="danger" onClick={handleBatchDeleteRules}>批量删除 ({selectedRuleIds().length})</Button>
+            </Show>
+            <Button leftIcon={<Icon as={BiSolidCloudUpload} />} colorScheme="accent" onClick={() => { setImportFile(null); setIsImportModalOpen(true); }}>导入策略</Button>
+            <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddRule}>新增策略</Button>
+          </Show>
+        </HStack>
       </HStack>
 
       <Box flex="1" overflowY="auto">
         {/* 模式管理 */}
         <Show when={activeTab() === 0}>
           <VStack alignItems="stretch" spacing="$4">
-            <HStack justifyContent="flex-end">
+            {/* <HStack justifyContent="flex-end">
               <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddMode}>新增模式</Button>
-            </HStack>
+            </HStack> */}
             <Box borderWidth="1px" borderRadius="$lg" overflowX="auto">
               <Table dense>
                 <Thead>
                   <Tr>
                     <Th>ID</Th>
-                    <Th>模式名称</Th>
+                    <Th>任务名称</Th>
                     <Th>描述</Th>
                     <Th>操作</Th>
                   </Tr>
@@ -381,7 +414,7 @@ const SecurityConfiguration: Component = () => {
         {/* 规则管理 */}
         <Show when={activeTab() === 1}>
           <VStack alignItems="stretch" spacing="$4">
-            <HStack justifyContent="space-between" spacing="$2">
+            {/* <HStack justifyContent="space-between" spacing="$2">
               <Show when={selectedRuleIds().length > 0}>
                 <Button leftIcon={<Icon as={BiSolidTrash} />} colorScheme="danger" onClick={handleBatchDeleteRules}>批量删除 ({selectedRuleIds().length})</Button>
               </Show>
@@ -389,7 +422,7 @@ const SecurityConfiguration: Component = () => {
                 <Button leftIcon={<Icon as={BiSolidCloudUpload} />} colorScheme="accent" onClick={() => { setImportFile(null); setIsImportModalOpen(true); }}>导入规则</Button>
                 <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddRule}>新增规则</Button>
               </HStack>
-            </HStack>
+            </HStack> */}
             <Box borderWidth="1px" borderRadius="$lg" overflowX="auto">
               <Table dense>
                 <Thead>
@@ -401,7 +434,7 @@ const SecurityConfiguration: Component = () => {
                       />
                     </Th>
                     <Th>ID</Th>
-                    <Th>规则名称</Th>
+                    <Th>策略名称</Th>
                     <Th>方向</Th>
                     <Th>协议</Th>
                     <Th>源IP</Th>
@@ -445,6 +478,15 @@ const SecurityConfiguration: Component = () => {
                 </Tbody>
               </Table>
             </Box>
+            <HStack justifyContent="flex-end" pt="$4">
+              <Paginator
+                total={ruleTotal()}
+                defaultCurrent={rulePage()}
+                defaultPageSize={rulePageSize()}
+                onChange={handleRulePageChange}
+                colorScheme="primary"
+              />
+            </HStack>
           </VStack>
         </Show>
 
@@ -453,7 +495,7 @@ const SecurityConfiguration: Component = () => {
           <HStack alignItems="flex-start" spacing="$4" h="$full">
             {/* 左侧：模式选择 */}
             <Box w="300px" borderWidth="1px" borderRadius="$lg" p="$4" h="$full" bg="$neutral2">
-              <Text fontWeight="bold" mb="$4">选择配置模式</Text>
+              <Text fontWeight="bold" mb="$4">选择任务维度</Text>
               <VStack spacing="$2" alignItems="stretch">
                 <For each={modes()}>
                   {(mode) => (
@@ -479,15 +521,15 @@ const SecurityConfiguration: Component = () => {
             <Box flex="1" borderWidth="1px" borderRadius="$lg" p="$4" h="$full">
               <Show when={selectedModeId()} fallback={
                 <VStack h="$full" justifyContent="center">
-                  <Text color="$neutral10">请从左侧选择一个配置模式以开始编排</Text>
+                  <Text color="$neutral10">请从左侧选择一个任务维度以开始编排</Text>
                 </VStack>
               }>
                 <VStack h="$full" alignItems="stretch" spacing="$4">
                   <HStack justifyContent="space-between">
-                    <Text fontWeight="bold">规则执行顺序 (从上到下)</Text>
+                    <Text fontWeight="bold">策略执行顺序 (从上到下)</Text>
                     <HStack spacing="$2">
                       <Button leftIcon={<Icon as={BiSolidDownload} />} size="sm" variant="outline" onClick={() => addonApi.downloadSecConfigModeScript(selectedModeId()!)}>导出脚本</Button>
-                      <Button leftIcon={<Icon as={BiSolidPlusCircle} />} size="sm" colorScheme="primary" onClick={openAssignModal}>添加规则</Button>
+                      <Button leftIcon={<Icon as={BiSolidPlusCircle} />} size="sm" colorScheme="primary" onClick={openAssignModal}>添加策略</Button>
                     </HStack>
                   </HStack>
 
@@ -496,7 +538,7 @@ const SecurityConfiguration: Component = () => {
                       <Thead>
                         <Tr>
                           <Th w="50px">顺序</Th>
-                          <Th>规则名称</Th>
+                          <Th>策略名称</Th>
                           <Th>动作</Th>
                           <Th>详情</Th>
                           <Th>排序</Th>
@@ -548,7 +590,7 @@ const SecurityConfiguration: Component = () => {
                         </For>
                         <Show when={modeRules().length === 0}>
                           <Tr>
-                            <Td colSpan={6} textAlign="center" py="$8" color="$neutral10">暂无关联规则</Td>
+                            <Td colSpan={6} textAlign="center" py="$8" color="$neutral10">暂无关联策略</Td>
                           </Tr>
                         </Show>
                       </Tbody>
@@ -566,11 +608,11 @@ const SecurityConfiguration: Component = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalCloseButton />
-          <ModalHeader>{currentMode() ? "编辑模式" : "新增模式"}</ModalHeader>
+          <ModalHeader>{currentMode() ? "编辑任务" : "新增任务"}</ModalHeader>
           <ModalBody>
             <VStack spacing="$4">
               <FormControl invalid={!!formErrors().mode_name}>
-                <FormLabel>模式名称</FormLabel>
+                <FormLabel>任务名称</FormLabel>
                 <Input value={modeForm().mode_name} onInput={(e) => setModeForm({ ...modeForm(), mode_name: e.currentTarget.value })} />
                 <FormErrorMessage>{formErrors().mode_name}</FormErrorMessage>
               </FormControl>
@@ -591,11 +633,11 @@ const SecurityConfiguration: Component = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalCloseButton />
-          <ModalHeader>{currentRule() ? "编辑规则" : "新增规则"}</ModalHeader>
+          <ModalHeader>{currentRule() ? "编辑策略" : "新增策略"}</ModalHeader>
           <ModalBody>
             <VStack spacing="$4">
               <FormControl invalid={!!formErrors().rule_name}>
-                <FormLabel>规则名称</FormLabel>
+                <FormLabel>策略名称</FormLabel>
                 <Input value={ruleForm().rule_name} onInput={(e) => setRuleForm({ ...ruleForm(), rule_name: e.currentTarget.value })} />
                 <FormErrorMessage>{formErrors().rule_name}</FormErrorMessage>
               </FormControl>
@@ -703,11 +745,11 @@ const SecurityConfiguration: Component = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalCloseButton />
-          <ModalHeader>添加规则到当前模式</ModalHeader>
+          <ModalHeader>添加策略到当前任务</ModalHeader>
           <ModalBody>
             <VStack spacing="$4">
               <FormControl>
-                <FormLabel>选择规则</FormLabel>
+                <FormLabel>选择策略</FormLabel>
                 <select
                   class="hope-select"
                   value={selectedRuleToAssign() || ""}
@@ -734,7 +776,7 @@ const SecurityConfiguration: Component = () => {
                   </For>
                 </select>
                 <Show when={availableRules().length === 0}>
-                  <Text fontSize="$xs" color="$warning9" mt="$1">没有更多可用规则</Text>
+                  <Text fontSize="$xs" color="$warning9" mt="$1">没有更多可用策略</Text>
                 </Show>
               </FormControl>
             </VStack>
@@ -749,10 +791,10 @@ const SecurityConfiguration: Component = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalCloseButton />
-          <ModalHeader>批量导入规则</ModalHeader>
+          <ModalHeader>批量导入策略</ModalHeader>
           <ModalBody>
             <VStack spacing="$4" alignItems="stretch">
-              <Text fontSize="$sm" color="$neutral10">支持上传 CSV 或 JSON 格式的规则文件。</Text>
+              <Text fontSize="$sm" color="$neutral10">支持上传 CSV 或 JSON 格式的策略文件。</Text>
               <input
                 type="file"
                 accept=".csv,.json"

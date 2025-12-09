@@ -5,12 +5,16 @@ import { Header } from "./Header"
 import { SideMenu } from "./SideMenu"
 import { side_menu_items } from "./sidemenu_items"
 import { Route, Routes } from "@solidjs/router"
-import { For, Suspense } from "solid-js"
+import { For, Suspense, Show } from "solid-js"
 import { routes } from "./routes"
 
 const Tenant = () => {
   const t = useT()
   useTitle(() => t("众测数据保障子系统"))
+
+  // 布局显隐配置：true=显示页头侧边栏，false=全屏显示内容
+  const SHOW_LAYOUT = true;
+
   return (
     <Box
       css={{
@@ -19,29 +23,33 @@ const Tenant = () => {
       bgColor="$background"
       w="$full"
     >
-      <Header />
-      <Flex w="$full" h="calc(100vh - 64px)">
+      <Show when={SHOW_LAYOUT}>
+        <Header />
+      </Show>
+      <Flex w="$full" h={SHOW_LAYOUT ? "calc(100vh - 64px)" : "100vh"}>
+        <Show when={SHOW_LAYOUT}>
+          <Box
+            display={{ "@initial": "none", "@sm": "block" }}
+            w="$56"
+            h="$full"
+            shadow="$md"
+            bgColor={useColorModeValue("$background", "$neutral2")()}
+            overflowY="auto"
+          >
+            <SideMenu items={side_menu_items} />
+            <Center>
+              <Box p="$2" color="$neutral11">
+                <SwitchLanguageWhite />
+                <SwitchColorMode />
+              </Box>
+            </Center>
+          </Box>
+        </Show>
         <Box
-          display={{ "@initial": "none", "@sm": "block" }}
-          w="$56"
-          h="$full"
-          shadow="$md"
-          bgColor={useColorModeValue("$background", "$neutral2")()}
-          overflowY="auto"
-        >
-          <SideMenu items={side_menu_items} />
-          <Center>
-            <Box p="$2" color="$neutral11">
-              <SwitchLanguageWhite />
-              <SwitchColorMode />
-            </Box>
-          </Center>
-        </Box>
-        <Box
-          w={{
+          w={SHOW_LAYOUT ? {
             "@initial": "$full",
             "@sm": "calc(100% - 14rem)",
-          }}
+          } : "$full"}
           p="$4"
           overflowY="auto"
         >

@@ -10,6 +10,7 @@ import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave } from "solid
 import { notify, handleResp } from "~/utils";
 import * as addonApi from "~/utils/addon";
 import { useManageTitle } from "~/hooks";
+import { Paginator } from "~/components/Paginator";
 
 // 类型定义 - 与后端 addon_models.go 保持一致
 
@@ -96,15 +97,29 @@ const DataSecurityManagement: Component = () => {
         status: 1
     });
 
+    // 分页状态
+    const [protocolPage, setProtocolPage] = createSignal(1);
+    const [protocolPageSize, setProtocolPageSize] = createSignal(7);
+    const [protocolTotal, setProtocolTotal] = createSignal(0);
+
+    const [devicePage, setDevicePage] = createSignal(1);
+    const [devicePageSize, setDevicePageSize] = createSignal(7);
+    const [deviceTotal, setDeviceTotal] = createSignal(0);
+
+    const [pointPage, setPointPage] = createSignal(1);
+    const [pointPageSize, setPointPageSize] = createSignal(7);
+    const [pointTotal, setPointTotal] = createSignal(0);
+
     // 加载数据
 
 
-    const loadProtocols = async () => {
+    const loadProtocols = async (page = protocolPage(), size = protocolPageSize()) => {
         setLoading(true);
         try {
-            const resp: any = await addonApi.getICSProtocols();
+            const resp: any = await addonApi.getICSProtocols(page, size);
             handleResp(resp, (data: any) => {
-                setProtocols(data.content || data || []);
+                setProtocols(data.content || []);
+                setProtocolTotal(data.total || 0);
             });
         } catch (error) {
             console.error('加载工控协议失败:', error);
@@ -114,12 +129,13 @@ const DataSecurityManagement: Component = () => {
         }
     };
 
-    const loadDevices = async () => {
+    const loadDevices = async (page = devicePage(), size = devicePageSize()) => {
         setLoading(true);
         try {
-            const resp: any = await addonApi.getICSDevices();
+            const resp: any = await addonApi.getICSDevices(page, size);
             handleResp(resp, (data: any) => {
-                setDevices(data.content || data || []);
+                setDevices(data.content || []);
+                setDeviceTotal(data.total || 0);
             });
         } catch (error) {
             console.error('加载工控设备失败:', error);
@@ -129,12 +145,13 @@ const DataSecurityManagement: Component = () => {
         }
     };
 
-    const loadPoints = async () => {
+    const loadPoints = async (page = pointPage(), size = pointPageSize()) => {
         setLoading(true);
         try {
-            const resp: any = await addonApi.getICSDevicePoints();
+            const resp: any = await addonApi.getICSDevicePoints(page, size);
             handleResp(resp, (data: any) => {
-                setPoints(data.content || data || []);
+                setPoints(data.content || []);
+                setPointTotal(data.total || 0);
             });
         } catch (error) {
             console.error('加载设备场量点失败:', error);
@@ -175,6 +192,40 @@ const DataSecurityManagement: Component = () => {
         if (!pointForm().device_id) errors.device_id = "请选择关联设备";
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
+    };
+
+    // 分页处理
+    const handleProtocolPageChange = (page: number) => {
+        setProtocolPage(page);
+        loadProtocols(page, protocolPageSize());
+    };
+
+    const handleProtocolPageSizeChange = (size: number) => {
+        setProtocolPageSize(size);
+        setProtocolPage(1);
+        loadProtocols(1, size);
+    };
+
+    const handleDevicePageChange = (page: number) => {
+        setDevicePage(page);
+        loadDevices(page, devicePageSize());
+    };
+
+    const handleDevicePageSizeChange = (size: number) => {
+        setDevicePageSize(size);
+        setDevicePage(1);
+        loadDevices(1, size);
+    };
+
+    const handlePointPageChange = (page: number) => {
+        setPointPage(page);
+        loadPoints(page, pointPageSize());
+    };
+
+    const handlePointPageSizeChange = (size: number) => {
+        setPointPageSize(size);
+        setPointPage(1);
+        loadPoints(1, size);
     };
 
     // 表单提交
@@ -351,14 +402,12 @@ const DataSecurityManagement: Component = () => {
             <Text fontSize="$xl" fontWeight="$bold">众测数据保障系统</Text>
 
             <VStack spacing="$4" alignItems="stretch">
-                <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2">
-                    <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>工控协议管理</Button>
-                    <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>工控设备管理</Button>
-                    <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>设备场量点管理</Button>
-                </HStack>
-
-                {/* 顶部操作栏 */}
-                <HStack justifyContent="flex-end">
+                <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2" justifyContent="space-between">
+                    <HStack spacing="$2">
+                        <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>工控协议管理</Button>
+                        <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>工控设备管理</Button>
+                        <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>设备场量点管理</Button>
+                    </HStack>
                     <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddModal}>
                         新增
                     </Button>
@@ -408,6 +457,15 @@ const DataSecurityManagement: Component = () => {
                             </Tbody>
                         </Table>
                     </Box>
+                    <HStack justifyContent="flex-end" pt="$4">
+                        <Paginator
+                            total={protocolTotal()}
+                            defaultCurrent={protocolPage()}
+                            defaultPageSize={protocolPageSize()}
+                            onChange={handleProtocolPageChange}
+                            colorScheme="primary"
+                        />
+                    </HStack>
                 </Show>
 
                 {/* 工控设备管理面板 */}
@@ -451,6 +509,15 @@ const DataSecurityManagement: Component = () => {
                             </Tbody>
                         </Table>
                     </Box>
+                    <HStack justifyContent="flex-end" pt="$4">
+                        <Paginator
+                            total={deviceTotal()}
+                            defaultCurrent={devicePage()}
+                            defaultPageSize={devicePageSize()}
+                            onChange={handleDevicePageChange}
+                            colorScheme="primary"
+                        />
+                    </HStack>
                 </Show>
 
                 {/* 设备场量点管理面板 */}
@@ -494,6 +561,15 @@ const DataSecurityManagement: Component = () => {
                             </Tbody>
                         </Table>
                     </Box>
+                    <HStack justifyContent="flex-end" pt="$4">
+                        <Paginator
+                            total={pointTotal()}
+                            defaultCurrent={pointPage()}
+                            defaultPageSize={pointPageSize()}
+                            onChange={handlePointPageChange}
+                            colorScheme="primary"
+                        />
+                    </HStack>
                 </Show>
             </VStack>
 

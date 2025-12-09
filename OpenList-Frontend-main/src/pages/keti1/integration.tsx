@@ -41,7 +41,7 @@ import {
 } from "@hope-ui/solid"
 import { createSignal, For, Show } from "solid-js"
 import { useManageTitle, useT } from "~/hooks"
-import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave, BiSolidFileImport, BiSolidData } from "solid-icons/bi"
+import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave, BiSolidFileImport, BiSolidData, BiRegularTime, BiRegularUser, BiRegularDetail } from "solid-icons/bi"
 import { handleResp, notify } from "~/utils"
 
 // 模拟的后端API调用
@@ -81,6 +81,23 @@ interface TransformationConfig {
   status: "active" | "inactive"
 }
 
+interface StructureConfig {
+  id: string
+  name: string
+  description: string
+  fieldCount: number
+  createdTime: string
+}
+
+interface AuditLog {
+  id: string
+  timestamp: string
+  operator: string
+  action: string
+  target: string
+  result: "success" | "failure"
+}
+
 // 模拟静态数据
 const mockParsingConfigs: ParsingConfig[] = [
   { id: "parse-01", name: "XML到JSON解析器", sourceFormat: "XML", targetFormat: "JSON", parserType: "结构化解析", status: "active" },
@@ -96,20 +113,36 @@ const mockTransformationConfigs: TransformationConfig[] = [
   { id: "trans-04", name: "数据脱敏处理", sourceStructure: "Sensitive Data", targetStructure: "Anonymized Data", mappingRule: "字段加密/替换", status: "active" },
 ]
 
+const mockStructureConfigs: StructureConfig[] = [
+  { id: "struct-01", name: "工控协议标准头", description: "定义Modbus/S7等协议的通用头部结构", fieldCount: 12, createdTime: "2023-01-10 10:00:00" },
+  { id: "struct-02", name: "设备状态上报格式", description: "终端设备定时上报的状态数据包", fieldCount: 8, createdTime: "2023-01-12 14:30:00" },
+  { id: "struct-03", name: "告警日志结构", description: "安全审计系统的标准告警日志", fieldCount: 25, createdTime: "2023-02-01 09:15:00" },
+]
+
+const mockAuditLogs: AuditLog[] = [
+  { id: "audit-01", timestamp: "2023-06-01 10:05:22", operator: "admin", action: "新增解析配置", target: "XMLParser", result: "success" },
+  { id: "audit-02", timestamp: "2023-06-01 11:30:15", operator: "user1", action: "执行数据转换", target: "SensorData.json", result: "success" },
+  { id: "audit-03", timestamp: "2023-06-02 09:12:44", operator: "admin", action: "删除结构定义", target: "LegacyStruct", result: "failure" },
+  { id: "audit-04", timestamp: "2023-06-02 15:45:30", operator: "manager", action: "导出审计日志", target: "All Logs", result: "success" },
+  { id: "audit-05", timestamp: "2023-06-03 08:20:10", operator: "system", action: "自动备份", target: "Database", result: "success" },
+]
+
 const DataIntegration = () => {
   const t = useT()
   useManageTitle("数据集成")
 
   // 状态定义
+  const [activeTab, setActiveTab] = createSignal(0) // 0:结构管理, 1:数据转换, 2:数据解析, 3:数据审计
   const [loading, setLoading] = createSignal(false)
-  
+
   // 模态框状态
   const [isModalOpen, setIsModalOpen] = createSignal(false)
-  const [modalType, setModalType] = createSignal<"parsing" | "transformation">("parsing")
-  const [editingItem, setEditingItem] = createSignal<ParsingConfig | TransformationConfig | null>(null)
-  
+  const [modalType, setModalType] = createSignal<"parsing" | "transformation" | "structure">("parsing")
+  const [editingItem, setEditingItem] = createSignal<any>(null)
+
   // 表单字段状态
   const [name, setName] = createSignal("")
+  const [description, setDescription] = createSignal("") // For Structure
   const [sourceFormat, setSourceFormat] = createSignal("")
   const [targetFormat, setTargetFormat] = createSignal("")
   const [parserType, setParserType] = createSignal("")
@@ -122,17 +155,15 @@ const DataIntegration = () => {
   // 页面逻辑
   const refresh = async () => {
     setLoading(true)
-    const parseResp: any = await api.getDataParsingConfigs()
-    const transResp: any = await api.getDataTransformationConfigs()
-    // handleResp(parseResp, (data) => setParsingConfigs(data))
-    // handleResp(transResp, (data) => setTransformationConfigs(data))
-    setLoading(false)
+    // 模拟刷新，实际应重新请求API
+    setTimeout(() => setLoading(false), 500)
   }
 
-  const openAddModal = (type: "parsing" | "transformation") => {
+  const openAddModal = (type: "parsing" | "transformation" | "structure") => {
     setModalType(type)
     setEditingItem(null)
     setName("")
+    setDescription("")
     setSourceFormat("")
     setTargetFormat("")
     setParserType("")
@@ -144,25 +175,26 @@ const DataIntegration = () => {
     setIsModalOpen(true)
   }
 
-  const openEditModal = (type: "parsing" | "transformation", item: ParsingConfig | TransformationConfig) => {
+  const openEditModal = (type: "parsing" | "transformation" | "structure", item: any) => {
     setModalType(type)
     setEditingItem(item)
     setName(item.name)
-    setStatus(item.status)
     setFormErrors({})
-    
+
     if (type === "parsing") {
-      const parseItem = item as ParsingConfig;
-      setSourceFormat(parseItem.sourceFormat)
-      setTargetFormat(parseItem.targetFormat)
-      setParserType(parseItem.parserType)
-    } else {
-      const transItem = item as TransformationConfig;
-      setSourceStructure(transItem.sourceStructure)
-      setTargetStructure(transItem.targetStructure)
-      setMappingRule(transItem.mappingRule)
+      setSourceFormat(item.sourceFormat)
+      setTargetFormat(item.targetFormat)
+      setParserType(item.parserType)
+      setStatus(item.status)
+    } else if (type === "transformation") {
+      setSourceStructure(item.sourceStructure)
+      setTargetStructure(item.targetStructure)
+      setMappingRule(item.mappingRule)
+      setStatus(item.status)
+    } else if (type === "structure") {
+      setDescription(item.description)
     }
-    
+
     setIsModalOpen(true)
   }
 
@@ -173,281 +205,293 @@ const DataIntegration = () => {
   const validateForm = () => {
     const errors: { [key: string]: string } = {}
     if (!name()) errors.name = "名称不能为空"
-    
+
     if (modalType() === "parsing") {
       if (!sourceFormat()) errors.sourceFormat = "源格式不能为空"
       if (!targetFormat()) errors.targetFormat = "目标格式不能为空"
       if (!parserType()) errors.parserType = "解析类型不能为空"
-    } else {
+    } else if (modalType() === "transformation") {
       if (!sourceStructure()) errors.sourceStructure = "源结构不能为空"
       if (!targetStructure()) errors.targetStructure = "目标结构不能为空"
       if (!mappingRule()) errors.mappingRule = "映射规则不能为空"
+    } else if (modalType() === "structure") {
+      if (!description()) errors.description = "描述不能为空"
     }
-    
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
 
   const handleSave = async () => {
     if (!validateForm()) return
-
-    let data: any;
-    if (modalType() === "parsing") {
-      data = {
-        name: name(),
-        sourceFormat: sourceFormat(),
-        targetFormat: targetFormat(),
-        parserType: parserType(),
-        status: status(),
-      }
-    } else {
-      data = {
-        name: name(),
-        sourceStructure: sourceStructure(),
-        targetStructure: targetStructure(),
-        mappingRule: mappingRule(),
-        status: status(),
-      }
-    }
-
     setLoading(true)
-    const resp = editingItem()
-      ? await api.updateConfig(modalType(), editingItem()!.id, data)
-      : await api.createConfig(modalType(), data)
-
-    handleResp(resp, () => {
+    // 模拟保存
+    setTimeout(() => {
       notify.success("操作成功")
       closeModal()
-      refresh()
-    })
-    setLoading(false)
+      setLoading(false)
+    }, 500)
   }
 
-  const handleDelete = async (type: "parsing" | "transformation", id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("确定要删除此项吗？")) return
     setLoading(true)
-    const resp = await api.deleteConfig(type, id)
-    handleResp(resp, () => {
+    setTimeout(() => {
       notify.success("删除成功")
-      refresh()
-    })
-    setLoading(false)
+      setLoading(false)
+    }, 500)
   }
 
   // 获取模态框标题
   const getModalTitle = () => {
-    if (editingItem()) {
-      return modalType() === "parsing" ? "编辑数据解析配置" : "编辑数据转换配置"
+    const action = editingItem() ? "编辑" : "新增"
+    const typeMap = {
+      "parsing": "数据解析配置",
+      "transformation": "数据转换配置",
+      "structure": "数据结构"
     }
-    return modalType() === "parsing" ? "新增数据解析配置" : "新增数据转换配置"
+    return `${action}${typeMap[modalType()]}`
   }
 
   return (
-    <VStack w="$full" spacing="$5">
-      <HStack w="$full" justifyContent="space-between" flexWrap="wrap" gap="$2">
-        <Text fontSize="$2xl" fontWeight="bold">数据集成</Text>
-        <Button colorScheme="accent" onClick={refresh} loading={loading()}>
-          刷新
-        </Button>
+    <VStack w="$full" spacing="$4" h="$full">
+      <HStack justifyContent="space-between" w="$full">
+        <Text fontSize="$xl" fontWeight="$bold">数据集成</Text>
       </HStack>
 
-      {/* 数据解析部分 */}
-      <Box 
-        w="$full" 
-        borderWidth="1px" 
-        borderRadius="$lg" 
-        p="$4" 
-        background={useColorModeValue("$neutral2", "$neutral3")()}
-      >
-        <HStack w="$full" justifyContent="space-between" mb="$4">
-          <HStack spacing="$2">
-            <Icon as={BiSolidFileImport} color="$primary9" />
-            <Text fontWeight="$semibold" fontSize="$lg">数据解析</Text>
-          </HStack>
+      {/* Tabs */}
+      <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2" justifyContent="space-between" w="$full">
+        <HStack spacing="$2">
+          <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>数据结构管理</Button>
+          <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>数据转换</Button>
+          <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>数据解析</Button>
+          <Button variant={activeTab() === 3 ? "solid" : "ghost"} colorScheme={activeTab() === 3 ? "primary" : "neutral"} onClick={() => setActiveTab(3)}>数据审计</Button>
         </HStack>
-        
-        <HStack spacing="$6" alignItems="flex-start">
-          {/* 左侧文件选择区域 */}
-          <VStack w="30%" spacing="$4">
-            <FormControl>
-              <FormLabel>选择文件</FormLabel>
-              <Select defaultValue="">
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择要解析的文件" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectListbox>
-                    <SelectOption value="file1.json">
-                      <SelectOptionText>file1.json</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="file2.xml">
-                      <SelectOptionText>file2.xml</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="file3.csv">
-                      <SelectOptionText>file3.csv</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="file4.txt">
-                      <SelectOptionText>file4.txt</SelectOptionText>
-                    </SelectOption>
-                  </SelectListbox>
-                </SelectContent>
-              </Select>
-            </FormControl>
-            
-            <HStack spacing="$3">
-              <Button colorScheme="primary">确定</Button>
-              <Button variant="outline">重置</Button>
-            </HStack>
-          </VStack>
-          
-          {/* 右侧解析结果显示区域 */}
-          <Box w="70%" borderWidth="1px" borderRadius="$md" p="$4">
-            <Text fontWeight="$semibold" mb="$3">解析结果</Text>
-            <Box overflowX="auto">
+
+        {/* Actions */}
+        <HStack spacing="$2">
+          <Show when={activeTab() === 0}>
+            <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={() => openAddModal("structure")}>新增结构</Button>
+          </Show>
+          <Show when={activeTab() === 1}>
+            <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={() => openAddModal("transformation")}>新增转换配置</Button>
+          </Show>
+          <Show when={activeTab() === 2}>
+            <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={() => openAddModal("parsing")}>新增解析配置</Button>
+          </Show>
+          <Button colorScheme="accent" variant="outline" onClick={refresh} loading={loading()}>刷新</Button>
+        </HStack>
+      </HStack>
+
+      <Box flex="1" overflowY="auto" w="$full">
+        {/* Tab 0: 数据结构管理 */}
+        <Show when={activeTab() === 0}>
+          <Box borderWidth="1px" borderRadius="$lg" overflowX="auto" p="$4">
+            <Table dense>
+              <Thead>
+                <Tr>
+                  <Th>ID</Th>
+                  <Th>结构名称</Th>
+                  <Th>描述</Th>
+                  <Th>字段数量</Th>
+                  <Th>创建时间</Th>
+                  <Th>操作</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <For each={mockStructureConfigs}>
+                  {(item) => (
+                    <Tr>
+                      <Td>{item.id}</Td>
+                      <Td>{item.name}</Td>
+                      <Td>{item.description}</Td>
+                      <Td><Badge>{item.fieldCount}</Badge></Td>
+                      <Td>{item.createdTime}</Td>
+                      <Td>
+                        <HStack spacing="$2">
+                          <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal("structure", item)} />
+                          <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => handleDelete(item.id)} />
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  )}
+                </For>
+              </Tbody>
+            </Table>
+          </Box>
+        </Show>
+
+        {/* Tab 1: 数据转换 */}
+        <Show when={activeTab() === 1}>
+          <VStack spacing="$4" alignItems="stretch">
+            {/* 转换演示区 */}
+            <Box p="$4" borderWidth="1px" borderRadius="$lg" bg="$neutral2">
+              <Text fontWeight="bold" mb="$2">快速转换工具</Text>
+              <HStack w="$full" alignItems="center" spacing="$4">
+                <Text minWidth="80px">选择文件:</Text>
+                <Box flex="1">
+                  <Select defaultValue="">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectListbox>
+                        <SelectOption value="1"><SelectOptionText>data.json</SelectOptionText></SelectOption>
+                      </SelectListbox>
+                    </SelectContent>
+                  </Select>
+                </Box>
+                <Text>转出</Text>
+                <Box flex="1">
+                  <Select defaultValue="">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectListbox>
+                        <SelectOption value="xml"><SelectOptionText>XML</SelectOptionText></SelectOption>
+                      </SelectListbox>
+                    </SelectContent>
+                  </Select>
+                </Box>
+                <Button colorScheme="accent">开始转换</Button>
+              </HStack>
+              <VStack w="$full" spacing="$2" mt="$4">
+                <HStack justifyContent="space-between"><Text fontSize="$xs">转换进度</Text><Text fontSize="$xs">60%</Text></HStack>
+                <Progress w="$full" value={60} size="sm" />
+              </VStack>
+            </Box>
+
+            {/* 配置列表 */}
+            <Box borderWidth="1px" borderRadius="$lg" overflowX="auto" p="$4">
+              <Text fontWeight="bold" mb="$4">转换配置列表</Text>
               <Table dense>
                 <Thead>
                   <Tr>
-                    <Th>字段名</Th>
-                    <Th>类型</Th>
-                    <Th>示例值</Th>
-                    <Th>描述</Th>
+                    <Th>名称</Th>
+                    <Th>源结构</Th>
+                    <Th>目标结构</Th>
+                    <Th>映射规则</Th>
+                    <Th>状态</Th>
+                    <Th>操作</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  <Tr>
-                    <Td>id</Td>
-                    <Td>String</Td>
-                    <Td>"12345"</Td>
-                    <Td>唯一标识符</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>name</Td>
-                    <Td>String</Td>
-                    <Td>"张三"</Td>
-                    <Td>用户姓名</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>age</Td>
-                    <Td>Number</Td>
-                    <Td>25</Td>
-                    <Td>年龄</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>email</Td>
-                    <Td>String</Td>
-                    <Td>"zhangsan@example.com"</Td>
-                    <Td>电子邮箱</Td>
-                  </Tr>
+                  <For each={mockTransformationConfigs}>
+                    {(item) => (
+                      <Tr>
+                        <Td>{item.name}</Td>
+                        <Td>{item.sourceStructure}</Td>
+                        <Td>{item.targetStructure}</Td>
+                        <Td>{item.mappingRule}</Td>
+                        <Td><Badge colorScheme={item.status === 'active' ? 'success' : 'neutral'}>{item.status}</Badge></Td>
+                        <Td>
+                          <HStack spacing="$2">
+                            <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal("transformation", item)} />
+                            <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => handleDelete(item.id)} />
+                          </HStack>
+                        </Td>
+                      </Tr>
+                    )}
+                  </For>
                 </Tbody>
               </Table>
             </Box>
-          </Box>
-        </HStack>
-        
-        <Text fontSize="$sm" color="$neutral11" mt="$2">
-          数据解析功能支持多种数据格式的解析，包括结构化、半结构化和非结构化数据，可将原始数据转换为目标格式以便后续处理。
-        </Text>
-      </Box>
-
-      {/* 数据转换部分 */}
-      <Box 
-        w="$full" 
-        borderWidth="1px" 
-        borderRadius="$lg" 
-        p="$4" 
-        background={useColorModeValue("$neutral2", "$neutral3")()}
-      >
-        <HStack w="$full" justifyContent="space-between" mb="$4">
-          <HStack spacing="$2">
-            <Icon as={BiSolidData} color="$accent9" />
-            <Text fontWeight="$semibold" fontSize="$lg">数据转换</Text>
-          </HStack>
-        </HStack>
-        
-        <VStack w="$full" spacing="$4">
-          {/* 转换选择行 */}
-          <HStack w="$full" alignItems="center" spacing="$4">
-            <Text minWidth="80px">选择文件:</Text>
-            <Box flex="1">
-              <Select defaultValue="">
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择要转换的文件" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectListbox>
-                    <SelectOption value="data1.json">
-                      <SelectOptionText>data1.json</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="data2.xml">
-                      <SelectOptionText>data2.xml</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="data3.csv">
-                      <SelectOptionText>data3.csv</SelectOptionText>
-                    </SelectOption>
-                  </SelectListbox>
-                </SelectContent>
-              </Select>
-            </Box>
-            
-            <Text>转出</Text>
-            
-            <Box flex="1">
-              <Select defaultValue="">
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择转换格式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectListbox>
-                    <SelectOption value="json">
-                      <SelectOptionText>JSON</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="xml">
-                      <SelectOptionText>XML</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="csv">
-                      <SelectOptionText>CSV</SelectOptionText>
-                    </SelectOption>
-                    <SelectOption value="yaml">
-                      <SelectOptionText>YAML</SelectOptionText>
-                    </SelectOption>
-                  </SelectListbox>
-                </SelectContent>
-              </Select>
-            </Box>
-            
-            <Button colorScheme="accent">开始转换</Button>
-          </HStack>
-          
-          {/* 进度条 */}
-          <VStack w="$full" spacing="$2">
-            <Text alignSelf="flex-start">转换进度</Text>
-            <Progress w="$full" value={60} colorScheme="accent" />
-            <Text alignSelf="flex-end" fontSize="$sm" color="$neutral11">60%</Text>
           </VStack>
-          
-          {/* 转换结果 */}
-          <Box w="$full" borderWidth="1px" borderRadius="$md" p="$4">
-            <Text fontWeight="$semibold" mb="$3">转换结果</Text>
-            <Box overflowX="auto">
-              <Alert status="success">
-                <AlertIcon />
-                <Box flex="1">
-                  <AlertTitle>转换完成!</AlertTitle>
-                  <AlertDescription display="block">
-                    文件 data1.json 已成功转换为 XML 格式
-                  </AlertDescription>
+        </Show>
+
+        {/* Tab 2: 数据解析 */}
+        <Show when={activeTab() === 2}>
+          <VStack spacing="$4" alignItems="stretch">
+            {/* 解析演示区 */}
+            <Box p="$4" borderWidth="1px" borderRadius="$lg" bg="$neutral2">
+              <Text fontWeight="bold" mb="$2">快速解析工具</Text>
+              <HStack spacing="$4" alignItems="flex-start">
+                <VStack w="30%" spacing="$4">
+                  <FormControl>
+                    <FormLabel>选择文件</FormLabel>
+                    <Select defaultValue=""><SelectTrigger><SelectValue placeholder="选择文件" /></SelectTrigger><SelectContent><SelectListbox><SelectOption value="1"><SelectOptionText>test.xml</SelectOptionText></SelectOption></SelectListbox></SelectContent></Select>
+                  </FormControl>
+                  <Button colorScheme="primary" w="$full">解析预览</Button>
+                </VStack>
+                <Box w="70%" borderWidth="1px" borderRadius="$md" p="$2" bg="$background">
+                  <Text fontSize="$sm" color="$neutral10" mb="$2">解析结果预览...</Text>
+                  {/* 简化展示，实际应为表格 */}
+                  <Text fontSize="$xs" fontFamily="monospace">{"{"}\n  "id": "123",\n  "name": "Sample"\n{"}"}</Text>
                 </Box>
-              </Alert>
+              </HStack>
             </Box>
+
+            {/* 配置列表 */}
+            <Box borderWidth="1px" borderRadius="$lg" overflowX="auto" p="$4">
+              <Text fontWeight="bold" mb="$4">解析配置列表</Text>
+              <Table dense>
+                <Thead>
+                  <Tr>
+                    <Th>名称</Th>
+                    <Th>源格式</Th>
+                    <Th>目标格式</Th>
+                    <Th>解析类型</Th>
+                    <Th>状态</Th>
+                    <Th>操作</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <For each={mockParsingConfigs}>
+                    {(item) => (
+                      <Tr>
+                        <Td>{item.name}</Td>
+                        <Td>{item.sourceFormat}</Td>
+                        <Td>{item.targetFormat}</Td>
+                        <Td>{item.parserType}</Td>
+                        <Td><Badge colorScheme={item.status === 'active' ? 'success' : 'neutral'}>{item.status}</Badge></Td>
+                        <Td>
+                          <HStack spacing="$2">
+                            <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal("parsing", item)} />
+                            <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => handleDelete(item.id)} />
+                          </HStack>
+                        </Td>
+                      </Tr>
+                    )}
+                  </For>
+                </Tbody>
+              </Table>
+            </Box>
+          </VStack>
+        </Show>
+
+        {/* Tab 3: 数据审计 */}
+        <Show when={activeTab() === 3}>
+          <Box borderWidth="1px" borderRadius="$lg" overflowX="auto" p="$4">
+            <Table dense>
+              <Thead>
+                <Tr>
+                  <Th>时间</Th>
+                  <Th>操作人</Th>
+                  <Th>动作</Th>
+                  <Th>对象</Th>
+                  <Th>结果</Th>
+                  <Th>详情</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <For each={mockAuditLogs}>
+                  {(log) => (
+                    <Tr>
+                      <Td><HStack spacing="$1"><Icon as={BiRegularTime} color="$neutral10" /><Text>{log.timestamp}</Text></HStack></Td>
+                      <Td><HStack spacing="$1"><Icon as={BiRegularUser} color="$neutral10" /><Text>{log.operator}</Text></HStack></Td>
+                      <Td>{log.action}</Td>
+                      <Td>{log.target}</Td>
+                      <Td><Badge colorScheme={log.result === 'success' ? 'success' : 'danger'}>{log.result}</Badge></Td>
+                      <Td>
+                        <IconButton aria-label="查看详情" icon={<BiRegularDetail />} size="sm" variant="ghost" />
+                      </Td>
+                    </Tr>
+                  )}
+                </For>
+              </Tbody>
+            </Table>
           </Box>
-        </VStack>
-        
-        <Text fontSize="$sm" color="$neutral11" mt="$2">
-          数据转换功能支持数据结构的转换和映射，包括字段映射、数据清洗、格式标准化等操作，确保数据在不同系统间的兼容性。
-        </Text>
+        </Show>
       </Box>
 
-      {/* 添加/编辑模态框 */}
+      {/* 统一添加/编辑模态框 */}
       <Modal opened={isModalOpen()} onClose={closeModal} size="lg">
         <ModalOverlay />
         <ModalContent>
@@ -467,6 +511,20 @@ const DataIntegration = () => {
                 <FormErrorMessage>{formErrors().name}</FormErrorMessage>
               </FormControl>
 
+              {/* Data Structure Form */}
+              <Show when={modalType() === "structure"}>
+                <FormControl invalid={!!formErrors().description}>
+                  <FormLabel>描述</FormLabel>
+                  <Textarea
+                    value={description()}
+                    onInput={(e) => setDescription(e.currentTarget.value)}
+                    placeholder="请输入结构描述"
+                  />
+                  <FormErrorMessage>{formErrors().description}</FormErrorMessage>
+                </FormControl>
+              </Show>
+
+              {/* Parsing Form */}
               <Show when={modalType() === "parsing"}>
                 <FormControl invalid={!!formErrors().sourceFormat}>
                   <FormLabel>源格式</FormLabel>
@@ -492,22 +550,14 @@ const DataIntegration = () => {
                   <FormLabel>解析类型</FormLabel>
                   <Select value={parserType()} onChange={setParserType}>
                     <SelectTrigger>
-                      <SelectValue placeholder="请选择解析类型" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectListbox>
-                        <SelectOption value="结构化解析">
-                          <SelectOptionText>结构化解析</SelectOptionText>
-                        </SelectOption>
-                        <SelectOption value="批量导入">
-                          <SelectOptionText>批量导入</SelectOptionText>
-                        </SelectOption>
-                        <SelectOption value="正则表达式">
-                          <SelectOptionText>正则表达式</SelectOptionText>
-                        </SelectOption>
-                        <SelectOption value="字节流解析">
-                          <SelectOptionText>字节流解析</SelectOptionText>
-                        </SelectOption>
+                        <SelectOption value="结构化解析"><SelectOptionText>结构化解析</SelectOptionText></SelectOption>
+                        <SelectOption value="批量导入"><SelectOptionText>批量导入</SelectOptionText></SelectOption>
+                        <SelectOption value="正则表达式"><SelectOptionText>正则表达式</SelectOptionText></SelectOption>
+                        <SelectOption value="字节流解析"><SelectOptionText>字节流解析</SelectOptionText></SelectOption>
                       </SelectListbox>
                     </SelectContent>
                   </Select>
@@ -515,13 +565,13 @@ const DataIntegration = () => {
                 </FormControl>
               </Show>
 
+              {/* Transformation Form */}
               <Show when={modalType() === "transformation"}>
                 <FormControl invalid={!!formErrors().sourceStructure}>
                   <FormLabel>源结构</FormLabel>
                   <Input
                     value={sourceStructure()}
                     onInput={(e) => setSourceStructure(e.currentTarget.value)}
-                    placeholder="请输入源数据结构"
                   />
                   <FormErrorMessage>{formErrors().sourceStructure}</FormErrorMessage>
                 </FormControl>
@@ -531,7 +581,6 @@ const DataIntegration = () => {
                   <Input
                     value={targetStructure()}
                     onInput={(e) => setTargetStructure(e.currentTarget.value)}
-                    placeholder="请输入目标数据结构"
                   />
                   <FormErrorMessage>{formErrors().targetStructure}</FormErrorMessage>
                 </FormControl>
@@ -541,35 +590,36 @@ const DataIntegration = () => {
                   <Textarea
                     value={mappingRule()}
                     onInput={(e) => setMappingRule(e.currentTarget.value)}
-                    placeholder="请输入映射规则"
-                    rows={3}
                   />
                   <FormErrorMessage>{formErrors().mappingRule}</FormErrorMessage>
                 </FormControl>
               </Show>
 
-              <HStack w="$full" spacing="$4">
-                <Box flex="1">
-                  <FormLabel mb="$2">状态</FormLabel>
-                  <HStack spacing="$2">
-                    <Button 
-                      size="sm"
-                      colorScheme={status() === "active" ? "success" : "neutral"}
-                      onClick={() => setStatus("active")}
-                    >
-                      启用
-                    </Button>
-                    <Button 
-                      size="sm"
-                      colorScheme={status() === "inactive" ? "neutral" : "neutral"}
-                      variant={status() === "inactive" ? "solid" : "outline"}
-                      onClick={() => setStatus("inactive")}
-                    >
-                      禁用
-                    </Button>
-                  </HStack>
-                </Box>
-              </HStack>
+              <Show when={modalType() !== "structure"}>
+                <HStack w="$full" spacing="$4">
+                  <Box flex="1">
+                    <FormLabel mb="$2">状态</FormLabel>
+                    <HStack spacing="$2">
+                      <Button
+                        size="sm"
+                        colorScheme={status() === "active" ? "success" : "neutral"}
+                        onClick={() => setStatus("active")}
+                      >
+                        启用
+                      </Button>
+                      <Button
+                        size="sm"
+                        colorScheme={status() === "inactive" ? "neutral" : "neutral"}
+                        variant={status() === "inactive" ? "solid" : "outline"}
+                        onClick={() => setStatus("inactive")}
+                      >
+                        禁用
+                      </Button>
+                    </HStack>
+                  </Box>
+                </HStack>
+              </Show>
+
             </VStack>
           </ModalBody>
           <ModalFooter>
@@ -577,8 +627,8 @@ const DataIntegration = () => {
               <Button onClick={closeModal} variant="subtle">
                 取消
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 loading={loading()}
                 leftIcon={<Icon as={BiSolidSave} />}
               >
