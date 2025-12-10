@@ -39,12 +39,22 @@ import {
   SelectValue,
   Progress,
 } from "@hope-ui/solid"
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For, Show, onMount } from "solid-js"
 import { useManageTitle, useT } from "~/hooks"
 import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave, BiSolidFileImport, BiSolidData, BiRegularTime, BiRegularUser, BiRegularDetail } from "solid-icons/bi"
-import { handleResp, notify } from "~/utils"
+import { handleResp, notify, r } from "~/utils"
 
-// 模拟的后端API调用
+// PCAP Analysis API
+const pcapApi = {
+  listFiles: async () => {
+    return r.get("/keti1/pcap/list")
+  },
+  parseFile: async (filename: string) => {
+    return r.post("/keti1/pcap/parse", { filename })
+  },
+}
+
+// 模拟的后端API调用 (保留用于其他Tab)
 const api = {
   getDataParsingConfigs: async () => {
     return new Promise(resolve => setTimeout(() => resolve({ code: 200, message: "Success", data: mockParsingConfigs }), 500))
@@ -96,6 +106,35 @@ interface AuditLog {
   action: string
   target: string
   result: "success" | "failure"
+}
+
+// PCAP Analysis interfaces
+interface PcapPacketItem {
+  address: string
+  value: any
+  type: string
+  description?: string
+  other?: Record<string, any>
+}
+
+interface PcapPacket {
+  packet_no: string
+  timestamp: string
+  src_ip: string
+  dst_ip: string
+  protocol: string
+  info: string
+  items: PcapPacketItem[]
+  other?: Record<string, any>
+}
+
+interface PcapParseResult {
+  data: PcapPacket[]
+  meta: {
+    filename: string
+    total_scanned: number
+    valid_packets: number
+  }
 }
 
 // 模拟静态数据
@@ -151,6 +190,13 @@ const DataIntegration = () => {
   const [mappingRule, setMappingRule] = createSignal("")
   const [status, setStatus] = createSignal<"active" | "inactive">("active")
   const [formErrors, setFormErrors] = createSignal<{ [key: string]: string }>({})
+
+  // PCAP parsing state
+  const [pcapFiles, setPcapFiles] = createSignal<string[]>([])
+  const [selectedFile, setSelectedFile] = createSignal("")
+  const [parseResult, setParseResult] = createSignal<PcapParseResult | null>(null)
+  const [parsing, setParsing] = createSignal(false)
+  const [expandedPackets, setExpandedPackets] = createSignal<Set<string>>(new Set())
 
   // 页面逻辑
   const refresh = async () => {
@@ -252,6 +298,50 @@ const DataIntegration = () => {
     }
     return `${action}${typeMap[modalType()]}`
   }
+
+  // PCAP file functions
+  const loadPcapFiles = async () => {
+    setLoading(true)
+    const resp = await pcapApi.listFiles()
+    handleResp(resp, (data: any) => {
+      setPcapFiles(data || [])
+    })
+    setLoading(false)
+  }
+
+  const handleParsePcap = async () => {
+    if (!selectedFile()) {
+      notify.warning("请先选择 PCAP 文件")
+      return
+    }
+
+    setParsing(true)
+    setParseResult(null)
+    const resp = await pcapApi.parseFile(selectedFile())
+    handleResp(resp, (result: any) => {
+      setParseResult(result as PcapParseResult)
+      notify.success(`解析完成！共扫描 ${result.meta?.total_scanned || 0} 个数据包，识别 ${result.meta?.valid_packets || 0} 个有效包`)
+    }, (msg: string) => {
+      notify.error(msg || "解析失败")
+    })
+    setParsing(false)
+  }
+
+  const togglePacketExpansion = (packetNo: string) => {
+    const expanded = new Set(expandedPackets())
+    if (expanded.has(packetNo)) {
+      expanded.delete(packetNo)
+    } else {
+      expanded.add(packetNo)
+    }
+    setExpandedPackets(expanded)
+  }
+
+  // Load PCAP files on mount
+  onMount(() => {
+    loadPcapFiles()
+  })
+
 
   return (
     <VStack w="$full" spacing="$4" h="$full">
@@ -399,21 +489,151 @@ const DataIntegration = () => {
         {/* Tab 2: 数据解析 */}
         <Show when={activeTab() === 2}>
           <VStack spacing="$4" alignItems="stretch">
-            {/* 解析演示区 */}
+            {/* PCAP 解析工具 */}
             <Box p="$4" borderWidth="1px" borderRadius="$lg" bg="$neutral2">
-              <Text fontWeight="bold" mb="$2">快速解析工具</Text>
+              <Text fontWeight="bold" mb="$4">PCAP 文件解析</Text>
               <HStack spacing="$4" alignItems="flex-start">
-                <VStack w="30%" spacing="$4">
+                <VStack w="35%" spacing="$4">
                   <FormControl>
-                    <FormLabel>选择文件</FormLabel>
-                    <Select defaultValue=""><SelectTrigger><SelectValue placeholder="选择文件" /></SelectTrigger><SelectContent><SelectListbox><SelectOption value="1"><SelectOptionText>test.xml</SelectOptionText></SelectOption></SelectListbox></SelectContent></Select>
+                    <FormLabel>选择 PCAP 文件</FormLabel>
+                    <Select value={selectedFile()} onChange={setSelectedFile}>
+                      <SelectTrigger><SelectValue placeholder="请选择文件" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectListbox>
+                          <Show when={pcapFiles().length === 0}>
+                            <SelectOption value="" disabled><SelectOptionText>暂无文件</SelectOptionText></SelectOption>
+                          </Show>
+                          <For each={pcapFiles()}>
+                            {(file) => (
+                              <SelectOption value={file}>
+                                <SelectOptionText>{file}</SelectOptionText>
+                              </SelectOption>
+                            )}
+                          </For>
+                        </SelectListbox>
+                      </SelectContent>
+                    </Select>
                   </FormControl>
-                  <Button colorScheme="primary" w="$full">解析预览</Button>
+                  <Button
+                    colorScheme="primary"
+                    w="$full"
+                    onClick={handleParsePcap}
+                    loading={parsing()}
+                    disabled={!selectedFile()}
+                  >
+                    开始解析
+                  </Button>
+                  <Show when={parseResult()}>
+                    <VStack w="$full" spacing="$2" p="$3" bg="$success2" borderRadius="$md">
+                      <Text fontSize="$sm" fontWeight="bold">解析统计</Text>
+                      <HStack justifyContent="space-between" w="$full">
+                        <Text fontSize="$xs">文件名:</Text>
+                        <Text fontSize="$xs" fontWeight="bold">{parseResult()?.meta?.filename}</Text>
+                      </HStack>
+                      <HStack justifyContent="space-between" w="$full">
+                        <Text fontSize="$xs">总包数:</Text>
+                        <Badge colorScheme="info">{parseResult()?.meta?.total_scanned || 0}</Badge>
+                      </HStack>
+                      <HStack justifyContent="space-between" w="$full">
+                        <Text fontSize="$xs">有效包:</Text>
+                        <Badge colorScheme="success">{parseResult()?.meta?.valid_packets || 0}</Badge>
+                      </HStack>
+                    </VStack>
+                  </Show>
                 </VStack>
-                <Box w="70%" borderWidth="1px" borderRadius="$md" p="$2" bg="$background">
-                  <Text fontSize="$sm" color="$neutral10" mb="$2">解析结果预览...</Text>
-                  {/* 简化展示，实际应为表格 */}
-                  <Text fontSize="$xs" fontFamily="monospace">{"{"}\n  "id": "123",\n  "name": "Sample"\n{"}"}</Text>
+
+                <Box w="65%" borderWidth="1px" borderRadius="$md" p="$4" bg="$background" maxH="500px" overflowY="auto">
+                  <Show when={!parseResult()} fallback={
+                    <VStack alignItems="stretch" spacing="$2">
+                      <Text fontWeight="bold" mb="$2">解析结果 ({parseResult()?.data?.length || 0} 个数据包)</Text>
+                      <Table dense size="sm">
+                        <Thead>
+                          <Tr>
+                            <Th>包号</Th>
+                            <Th>协议</Th>
+                            <Th>源IP</Th>
+                            <Th>目标IP</Th>
+                            <Th>信息</Th>
+                            <Th>详情</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          <For each={parseResult()?.data?.slice(0, 50)}>
+                            {(packet) => (
+                              <>
+                                <Tr>
+                                  <Td>{packet.packet_no}</Td>
+                                  <Td>
+                                    <Badge colorScheme={
+                                      packet.protocol.includes('Modbus') ? 'primary' :
+                                        packet.protocol.includes('S7') ? 'success' :
+                                          packet.protocol.includes('Omron') ? 'warning' :
+                                            packet.protocol.includes('CIP') ? 'info' : 'neutral'
+                                    }>
+                                      {packet.protocol}
+                                    </Badge>
+                                  </Td>
+                                  <Td fontSize="$xs">{packet.src_ip}</Td>
+                                  <Td fontSize="$xs">{packet.dst_ip}</Td>
+                                  <Td fontSize="$xs">{packet.info}</Td>
+                                  <Td>
+                                    <IconButton
+                                      aria-label="展开详情"
+                                      icon={<BiRegularDetail />}
+                                      size="xs"
+                                      variant="ghost"
+                                      onClick={() => togglePacketExpansion(packet.packet_no)}
+                                    />
+                                  </Td>
+                                </Tr>
+                                <Show when={expandedPackets().has(packet.packet_no)}>
+                                  <Tr>
+                                    <Td colSpan={6} bg="$neutral2">
+                                      <VStack alignItems="stretch" spacing="$2" p="$2">
+                                        <Text fontSize="$xs" fontWeight="bold">数据项 ({packet.items?.length || 0}):</Text>
+                                        <Table dense size="xs">
+                                          <Thead>
+                                            <Tr>
+                                              <Th>地址</Th>
+                                              <Th>值</Th>
+                                              <Th>类型</Th>
+                                              <Th>描述</Th>
+                                            </Tr>
+                                          </Thead>
+                                          <Tbody>
+                                            <For each={packet.items}>
+                                              {(item) => (
+                                                <Tr>
+                                                  <Td fontSize="$xs">{item.address}</Td>
+                                                  <Td fontSize="$xs" fontFamily="monospace">{String(item.value)}</Td>
+                                                  <Td fontSize="$xs"><Badge size="xs">{item.type}</Badge></Td>
+                                                  <Td fontSize="$xs">{item.description || '-'}</Td>
+                                                </Tr>
+                                              )}
+                                            </For>
+                                          </Tbody>
+                                        </Table>
+                                      </VStack>
+                                    </Td>
+                                  </Tr>
+                                </Show>
+                              </>
+                            )}
+                          </For>
+                        </Tbody>
+                      </Table>
+                      <Show when={(parseResult()?.data?.length || 0) > 50}>
+                        <Text fontSize="$xs" color="$neutral10" textAlign="center" mt="$2">
+                          仅显示前 50 个数据包
+                        </Text>
+                      </Show>
+                    </VStack>
+                  }>
+                    <VStack spacing="$2" alignItems="center" justifyContent="center" minH="200px">
+                      <Text fontSize="$sm" color="$neutral10">请选择文件并点击"开始解析"</Text>
+                      <Text fontSize="$xs" color="$neutral9">支持 Modbus, S7Comm, Omron FINS, CIP 协议</Text>
+                    </VStack>
+                  </Show>
                 </Box>
               </HStack>
             </Box>
