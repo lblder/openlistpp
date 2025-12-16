@@ -123,7 +123,7 @@ export const Share = () => {
                   {t("shares.copy_msg")}
                 </Button>
                 <Button colorScheme="info" onClick={onClose}>
-                  {t("global.confirm")}
+                  确认
                 </Button>
               </ModalFooter>
             </>
@@ -271,7 +271,7 @@ export const Share = () => {
             </ModalBody>
             <ModalFooter display="flex" gap="$2">
               <Button colorScheme="neutral" onClick={onClose}>
-                {t("global.cancel")}
+                取消
               </Button>
               <Button
                 loading={okLoading()}
@@ -287,7 +287,7 @@ export const Share = () => {
                   })
                 }}
               >
-                {t("global.ok")}
+                确定
               </Button>
             </ModalFooter>
           </Match>

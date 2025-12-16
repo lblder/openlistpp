@@ -14,6 +14,7 @@ import { notify, handleResp } from "~/utils";
 import * as addonApi from "~/utils/addon";
 import { useManageTitle } from "~/hooks";
 import { Paginator } from "~/components/Paginator";
+import DataConversion from "./management";
 
 // PCAP Analysis API
 const pcapApi = {
@@ -751,38 +752,8 @@ const DataSecurityManagement: Component = () => {
 
                 {/* 数据转换管理面板 */}
                 <Show when={activeTab() === 3}>
-                    <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
-                        <Table dense>
-                            <Thead>
-                                <Tr>
-                                    <Th>名称</Th>
-                                    <Th>源结构</Th>
-                                    <Th>目标结构</Th>
-                                    <Th>映射规则</Th>
-                                    <Th>状态</Th>
-                                    <Th>操作</Th>
-                                </Tr>
-                            </Thead>
-                            <Tbody>
-                                <For each={mockTransformationConfigs}>
-                                    {(item) => (
-                                        <Tr>
-                                            <Td>{item.name}</Td>
-                                            <Td>{item.sourceStructure}</Td>
-                                            <Td>{item.targetStructure}</Td>
-                                            <Td>{item.mappingRule}</Td>
-                                            <Td><Badge colorScheme={item.status === 'active' ? 'success' : 'neutral'}>{item.status}</Badge></Td>
-                                            <Td>
-                                                <HStack spacing="$2">
-                                                    <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal(item)} />
-                                                    <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => deleteMockConfig(item.id)} />
-                                                </HStack>
-                                            </Td>
-                                        </Tr>
-                                    )}
-                                </For>
-                            </Tbody>
-                        </Table>
+                    <Box borderWidth="1px" borderRadius="$lg" overflow="hidden">
+                        <DataConversion />
                     </Box>
                 </Show>
 

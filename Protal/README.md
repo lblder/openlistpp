@@ -4,7 +4,10 @@
 
 这是一个基于 **Flask** 和 **Pyshark (Tshark)** 构建的轻量级工控协议分析微服务。
 
-它作为一个**无状态后端服务**，接收 PCAP 文件路径，利用 Wireshark 强大的内核自动识别工控协议（支持 Modbus, S7,  CIP,  Omron_Fins_Tcp 四种协议），并返回 JSON 格式的统计报告。
+它作为一个**无状态后端服务**，提供以下核心功能：
+
+1. **协议分析**: 接收 PCAP 文件路径，利用 Wireshark 强大的内核自动识别工控协议（支持 Modbus, S7, CIP, Omron_Fins_Tcp 等协议），并返回 JSON 格式的统计报告
+2. **格式转换**: 支持将 pcapng、cap、snoop 等 16 种抓包格式转换为标准 PCAP 格式
 
 ## 🛠️ 环境依赖
 
@@ -128,6 +131,58 @@ python app.py
     }
 }
 ```
+
+-----
+
+### 格式转换接口
+
+  * **URL**: `/api/convert`
+  * **Method**: `POST`
+  * **Content-Type**: `application/json`
+
+#### 请求参数 (Request)
+
+| 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `input_path` | string | 是 | **服务器本地**的输入文件绝对路径 (如 `D:\\data\\1.pcapng`) |
+| `output_path` | string | 否 | 输出文件路径（默认为同名 .pcap 文件） |
+| `overwrite` | boolean | 否 | 是否覆盖已存在文件（默认 false） |
+
+**请求示例 (JSON):**
+
+```json
+{
+    "input_path": "D:\\\\data\\\\1.pcapng",
+    "output_path": "D:\\\\data\\\\1.pcap",
+    "overwrite": true
+}
+```
+
+#### 响应示例 (JSON)
+
+```json
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "success": true,
+        "input_file": "D:\\data\\1.pcapng",
+        "output_file": "D:\\data\\1.pcap",
+        "input_format": "PCAP Next Generation",
+        "input_size": 1048576,
+        "output_size": 1024000,
+        "message": "转换成功"
+    }
+}
+```
+
+**支持的格式**: pcapng, cap, snoop, erf, tr1, fdc, syc, bfr, atc, acp, trc, enc, pkt, tpc, wpz, 5vw
+
+**更多接口**: 
+- 批量转换: `POST /api/convert/batch`
+- 查询格式: `GET /api/formats`
+
+📖 **详细文档**: 请查看 [CONVERTER_API.md](CONVERTER_API.md)
 
 -----
 

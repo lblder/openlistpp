@@ -57,7 +57,7 @@ export const RecursiveMove = () => {
           </ModalBody>
           <ModalFooter display="flex" gap="$2">
             <Button onClick={() => closeConfirmModal()} colorScheme="neutral">
-              {t("global.cancel")}
+              取消
             </Button>
             <Button
               onClick={() => {
@@ -66,7 +66,7 @@ export const RecursiveMove = () => {
               }}
               colorScheme="danger"
             >
-              {t("global.confirm")}
+              确认
             </Button>
           </ModalFooter>
         </ModalContent>

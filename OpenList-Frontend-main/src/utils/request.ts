@@ -40,14 +40,12 @@ instance.interceptors.response.use(
   (error) => {
     // response error
     console.error(error) // for debug
-    // notificationService.show({
-    //   status: "danger",
-    //   title: error.code,
-    //   description: error.message,
-    // });
+    const resp = error.response?.data
     return {
       code: axios.isCancel(error) ? -1 : error.response?.status,
-      message: error.message,
+      message: resp?.msg || resp?.message || error.message,
+      data: resp?.data,
+      ...resp // Spread other properties just in case
     }
   },
 )

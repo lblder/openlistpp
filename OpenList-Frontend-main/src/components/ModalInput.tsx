@@ -78,7 +78,7 @@ export const ModalInput = (props: ModalInputProps) => {
 
   const submit = () => {
     if (!value()) {
-      notify.warning(t("global.empty_input"))
+      notify.warning("请输入内容")
       return
     }
     props.onSubmit?.(value())
@@ -135,10 +135,10 @@ export const ModalInput = (props: ModalInputProps) => {
         <ModalFooter display="flex" gap="$2">
           <Show when={props.footerSlot}>{props.footerSlot}</Show>
           <Button onClick={props.onClose} colorScheme="neutral">
-            {t("global.cancel")}
+            取消
           </Button>
           <Button loading={props.loading} onClick={() => submit()}>
-            {t("global.ok")}
+            确定
           </Button>
         </ModalFooter>
       </ModalContent>

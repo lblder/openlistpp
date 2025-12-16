@@ -49,7 +49,7 @@ export const RemoveEmptyDirectory = () => {
         </ModalBody>
         <ModalFooter display="flex" gap="$2">
           <Button onClick={onClose} colorScheme="neutral">
-            {t("global.cancel")}
+            取消
           </Button>
           <Button
             colorScheme="danger"
@@ -62,7 +62,7 @@ export const RemoveEmptyDirectory = () => {
               })
             }}
           >
-            {t("global.confirm")}
+            确认
           </Button>
         </ModalFooter>
       </ModalContent>

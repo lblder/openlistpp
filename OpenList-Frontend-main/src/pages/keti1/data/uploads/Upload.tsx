@@ -110,51 +110,83 @@ const Upload = () => {
   const handleAddFiles = async (files: File[]) => {
     if (files.length === 0) return
 
-    // Validate files against active structures
     const structures = activeStructures()
     const validFiles: File[] = []
 
-    // If no active structures defined, do we allow everything? 
-    // Requirement says: "manage different data structures... if matches allowed extensions then upload"
-    // This implies if NO active structures, nothing can be uploaded? Or maybe we should skip validation if list is empty?
-    // Let's assume strict mode: Must match an active structure.
+    // Get current folder information
+    const currentPath = pathname()
+    const pathSegments = currentPath.split("/").filter(Boolean)
+    const currentFolderName = pathSegments[pathSegments.length - 1]
 
-    if (structures.length === 0) {
-      // If no structures are defined, we might want to allow everything OR nothing.
-      // Given the requirement "manage integration of DIFFERENT data structures", it implies a whitelist system.
-      // However, if the system is fresh, it might block everything.
-      // Let's allow everything if NO structures are defined to avoid bricking the system, 
-      // OR warn user. 
-      // Let's implement strict check but log warning.
-      // User asked: "if matches condition, allow upload".
-      // Let's check extensions.
-    }
+    // Common file extensions that should trigger strict folder-based validation
+    const COMMON_EXTENSIONS = [
+      'pcap', 'txt', 'log', 'json', 'xml', 'csv', 'pdf',
+      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp',
+      'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv',
+      'mp3', 'wav', 'flac', 'aac', 'ogg',
+      'zip', 'rar', '7z', 'tar', 'gz',
+      'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+      'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'c', 'h',
+      'md', 'yml', 'yaml', 'toml', 'ini', 'conf'
+    ]
 
-    const getAllowedExtensions = () => {
-      const exts = new Set<string>()
-      structures.forEach((s: any) => {
-        if (s.allowed_extensions) {
-          s.allowed_extensions.split(",").forEach((ext: string) => exts.add(ext.trim().toLowerCase()))
-        }
-      })
-      return exts
-    }
-
-    const allowedExts = getAllowedExtensions()
-    // If no extensions defined at all, maybe allow all? 
-    // Let's enforce: If there are active structures, file MUST match one. 
-    // If there are NO active structures, we allow uploading (fallback to default behavior).
-    const enforceValidation = structures.length > 0
-
-    for (const file of files) {
-      if (enforceValidation) {
-        const ext = "." + file.name.split(".").pop()?.toLowerCase()
-        if (!allowedExts.has(ext)) {
-          notify.warning(`文件 ${file.name} 的类型不在允许的上传列表中`)
-          continue
+    // Build a map: extension (without dot) -> structure name
+    // Example: "pcap" -> "网络数据包"
+    const extensionToStructure = new Map<string, any>()
+    structures.forEach((s: any) => {
+      if (s.allowed_extensions) {
+        // Extract extension without dot (e.g., ".pcap" -> "pcap")
+        const ext = s.allowed_extensions.trim().toLowerCase().replace(/^\./, '')
+        if (ext) {
+          extensionToStructure.set(ext, s)
         }
       }
-      validFiles.push(file)
+    })
+
+    // Determine validation strategy
+    let validationMode: 'none' | 'registered' | 'whitelist' = 'none'
+    let allowedExtension: string = ''
+    let structureName: string = ''
+
+    if (currentFolderName && currentFolderName.toLowerCase() !== "data") {
+      const folderLower = currentFolderName.toLowerCase()
+
+      // Priority 1: Check if folder name matches a registered extension
+      if (extensionToStructure.has(folderLower)) {
+        validationMode = 'registered'
+        allowedExtension = '.' + folderLower
+        structureName = extensionToStructure.get(folderLower).name
+      }
+      // Priority 2: Check if folder name is in common extensions whitelist
+      else if (COMMON_EXTENSIONS.includes(folderLower)) {
+        validationMode = 'whitelist'
+        allowedExtension = '.' + folderLower
+      }
+      // Otherwise: no validation (allow all files)
+    }
+
+    for (const file of files) {
+      const fileName = file.name
+      const ext = '.' + (fileName.split('.').pop()?.toLowerCase() || '')
+      let shouldSkip = false
+
+      if (validationMode === 'registered') {
+        // Registered structure validation
+        if (ext !== allowedExtension) {
+          notify.warning(`文件 ${fileName} 的类型不在数据结构"${structureName}"允许的上传列表中（仅允许 ${allowedExtension} 文件）`)
+          shouldSkip = true
+        }
+      } else if (validationMode === 'whitelist') {
+        // Whitelist-based validation
+        if (ext !== allowedExtension) {
+          notify.warning(`文件 ${fileName} 类型(${ext})与当前文件夹(${currentFolderName})不匹配，无法上传（仅允许 ${allowedExtension} 文件）`)
+          shouldSkip = true
+        }
+      }
+
+      if (!shouldSkip) {
+        validFiles.push(file)
+      }
     }
 
     if (validFiles.length === 0) return

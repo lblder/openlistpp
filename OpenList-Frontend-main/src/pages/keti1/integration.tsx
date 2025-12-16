@@ -124,7 +124,16 @@ const DataIntegration = () => {
 
     if (activeTab() === 1) {
       if (!description()) errors.description = "描述不能为空"
-      if (!allowedExtensions()) errors.allowedExtensions = "允许后缀不能为空"
+      if (!allowedExtensions()) {
+        errors.allowedExtensions = "允许后缀不能为空"
+      } else {
+        // 验证后缀格式：必须以点开头，只包含字母、数字
+        const ext = allowedExtensions().trim()
+        const extPattern = /^\.[a-zA-Z0-9]+$/
+        if (!extPattern.test(ext)) {
+          errors.allowedExtensions = "后缀格式不正确，应为 .xxx 格式（如 .txt、.pcap）"
+        }
+      }
     }
 
     setFormErrors(errors)
@@ -283,11 +292,11 @@ const DataIntegration = () => {
                 </FormControl>
 
                 <FormControl invalid={!!formErrors().allowedExtensions}>
-                  <FormLabel>允许的文件后缀 (逗号分隔)</FormLabel>
+                  <FormLabel>允许的文件后缀</FormLabel>
                   <Input
                     value={allowedExtensions()}
                     onInput={(e) => setAllowedExtensions(e.currentTarget.value)}
-                    placeholder="例如: .pcap, .txt, .log"
+                    placeholder="例如: .txt"
                   />
                   <FormErrorMessage>{formErrors().allowedExtensions}</FormErrorMessage>
                 </FormControl>

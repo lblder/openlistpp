@@ -1,4 +1,5 @@
 flask 
 pyshark 
 nest_asyncio
+flask-cors
 

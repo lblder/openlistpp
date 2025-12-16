@@ -11,7 +11,7 @@ import {
 import { onCleanup } from "solid-js"
 import { useFetch, usePath, useRouter, useT } from "~/hooks"
 import { selectedObjs } from "~/store"
-import {bus, fsRemove, handleRespWithNotifySuccess, pathJoin} from "~/utils"
+import { bus, fsRemove, handleRespWithNotifySuccess, pathJoin } from "~/utils"
 
 export const Delete = () => {
   const t = useT()
@@ -46,7 +46,7 @@ export const Delete = () => {
         </ModalBody>
         <ModalFooter display="flex" gap="$2">
           <Button onClick={onClose} colorScheme="neutral">
-            {t("global.cancel")}
+            取消
           </Button>
           <Button
             colorScheme="danger"
@@ -68,7 +68,7 @@ export const Delete = () => {
               })
             }}
           >
-            {t("global.confirm")}
+            确认
           </Button>
         </ModalFooter>
       </ModalContent>

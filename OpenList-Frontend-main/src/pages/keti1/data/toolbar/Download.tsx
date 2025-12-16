@@ -83,10 +83,10 @@ export const PackageDownloadModal = () => {
       onClose={onClose}
       closeOnOverlayClick={false}
       closeOnEsc={false}
-      // size={{
-      //   "@initial": "xs",
-      //   "@md": "md",
-      // }}
+    // size={{
+    //   "@initial": "xs",
+    //   "@md": "md",
+    // }}
     >
       <ModalOverlay />
       <ModalContent>
@@ -101,7 +101,7 @@ export const PackageDownloadModal = () => {
             </ModalBody>
             <ModalFooter display="flex" gap="$2">
               <Button onClick={onClose} colorScheme="neutral">
-                {t("global.cancel")}
+                取消
               </Button>
               <Button
                 colorScheme="info"
@@ -109,7 +109,7 @@ export const PackageDownloadModal = () => {
                   setShow("package_download")
                 }}
               >
-                {t("global.confirm")}
+                确认
               </Button>
             </ModalFooter>
           </Show>

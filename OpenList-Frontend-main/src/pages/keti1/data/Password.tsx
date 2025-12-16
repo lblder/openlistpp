@@ -56,10 +56,10 @@ const Password = (props: PasswordProps) => {
         </Flex>
         <HStack spacing="$2">
           <Button colorScheme="neutral" onClick={back}>
-            {t("global.back")}
+            返回
           </Button>
           <Button onClick={() => props.enterCallback()}>
-            {t("global.ok")}
+            确定
           </Button>
         </HStack>
       </HStack>

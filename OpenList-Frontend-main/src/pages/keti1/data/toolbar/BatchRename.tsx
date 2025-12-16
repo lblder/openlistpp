@@ -65,7 +65,7 @@ export const BatchRename = () => {
   const submit = () => {
     if (!srcName() || !newName()) {
       // Check if both input values are not empty
-      notify.warning(t("global.empty_input"))
+      notify.warning("请输入内容")
       return
     }
     const replaceRegexp = new RegExp(srcName(), "g")
@@ -236,13 +236,13 @@ export const BatchRename = () => {
               }}
               colorScheme="neutral"
             >
-              {t("global.cancel")}
+              取消
             </Button>
             <Button
               onClick={() => submit()}
               disabled={!srcName() || !newName()}
             >
-              {t("global.ok")}
+              确定
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -284,7 +284,7 @@ export const BatchRename = () => {
               }}
               colorScheme="neutral"
             >
-              {t("global.cancel")}
+              取消
             </Button>
             <Button
               onClick={() => {
@@ -294,7 +294,7 @@ export const BatchRename = () => {
               }}
               colorScheme="neutral"
             >
-              {t("global.back")}
+              返回
             </Button>
             <Button
               loading={loading()}
@@ -319,7 +319,7 @@ export const BatchRename = () => {
               }}
               disabled={matchNames().length == 0}
             >
-              {t("global.ok")}
+              确定
             </Button>
           </ModalFooter>
         </ModalContent>
