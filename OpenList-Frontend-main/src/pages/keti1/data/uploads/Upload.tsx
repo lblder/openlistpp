@@ -13,14 +13,15 @@ import {
   Box,
   Stack,
 } from "@hope-ui/solid"
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For, Show, onMount } from "solid-js"
+import { Resp } from "~/types"
 import { usePath, useRouter, useT } from "~/hooks"
 import { getMainColor } from "~/store"
 import {
   RiDocumentFolderUploadFill,
   RiDocumentFileUploadFill,
 } from "solid-icons/ri"
-import { getFileSize, notify, pathJoin } from "~/utils"
+import { getFileSize, notify, pathJoin, r } from "~/utils"
 import { asyncPool } from "~/utils/async_pool"
 import { createStore } from "solid-js/store"
 import { UploadFileProps, StatusBadge } from "./types"
@@ -89,16 +90,81 @@ const Upload = () => {
       ["success", "error"].includes(status),
     )
   }
-  let fileInput: HTMLInputElement
-  let folderInput: HTMLInputElement
+
+  // Data Structure Logic
+  const [activeStructures, setActiveStructures] = createSignal<any[]>([])
+  onMount(async () => {
+    try {
+      const resp = await r.get("/keti1/data-structure/active") as unknown as Resp<any>
+      if (resp.code === 200) {
+        setActiveStructures(resp.data)
+      }
+    } catch (e) {
+      console.error("Failed to fetch active data structures", e)
+    }
+  })
+
+  let fileInput: HTMLInputElement = undefined!
+  let folderInput: HTMLInputElement = undefined!
+
   const handleAddFiles = async (files: File[]) => {
     if (files.length === 0) return
-    setUploading(true)
+
+    // Validate files against active structures
+    const structures = activeStructures()
+    const validFiles: File[] = []
+
+    // If no active structures defined, do we allow everything? 
+    // Requirement says: "manage different data structures... if matches allowed extensions then upload"
+    // This implies if NO active structures, nothing can be uploaded? Or maybe we should skip validation if list is empty?
+    // Let's assume strict mode: Must match an active structure.
+
+    if (structures.length === 0) {
+      // If no structures are defined, we might want to allow everything OR nothing.
+      // Given the requirement "manage integration of DIFFERENT data structures", it implies a whitelist system.
+      // However, if the system is fresh, it might block everything.
+      // Let's allow everything if NO structures are defined to avoid bricking the system, 
+      // OR warn user. 
+      // Let's implement strict check but log warning.
+      // User asked: "if matches condition, allow upload".
+      // Let's check extensions.
+    }
+
+    const getAllowedExtensions = () => {
+      const exts = new Set<string>()
+      structures.forEach((s: any) => {
+        if (s.allowed_extensions) {
+          s.allowed_extensions.split(",").forEach((ext: string) => exts.add(ext.trim().toLowerCase()))
+        }
+      })
+      return exts
+    }
+
+    const allowedExts = getAllowedExtensions()
+    // If no extensions defined at all, maybe allow all? 
+    // Let's enforce: If there are active structures, file MUST match one. 
+    // If there are NO active structures, we allow uploading (fallback to default behavior).
+    const enforceValidation = structures.length > 0
+
     for (const file of files) {
+      if (enforceValidation) {
+        const ext = "." + file.name.split(".").pop()?.toLowerCase()
+        if (!allowedExts.has(ext)) {
+          notify.warning(`文件 ${file.name} 的类型不在允许的上传列表中`)
+          continue
+        }
+      }
+      validFiles.push(file)
+    }
+
+    if (validFiles.length === 0) return
+
+    setUploading(true)
+    for (const file of validFiles) {
       const upload = File2Upload(file)
       setUploadFiles("uploads", (uploads) => [...uploads, upload])
     }
-    for await (const ms of asyncPool(3, files, handleFile)) {
+    for await (const ms of asyncPool(3, validFiles, handleFile)) {
       console.log(ms)
     }
     refresh(undefined, true)

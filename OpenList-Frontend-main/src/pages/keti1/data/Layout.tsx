@@ -6,8 +6,8 @@ import { Header } from "./header/Header"
 import { Toolbar } from "./toolbar/Toolbar"
 
 const Index = () => {
-  useTitle(getSetting("site_title"))
-  
+  // useTitle(getSetting("site_title"))
+
   return (
     <>
       {/*<Header />*/}

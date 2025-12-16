@@ -15,7 +15,7 @@ import { useManageTitle } from "~/hooks";
 import { Paginator } from "~/components/Paginator";
 
 const SecurityConfiguration: Component = () => {
-  useManageTitle("系统安全配置与策略管理");
+  useManageTitle("数据保障");
 
   // 标签页状态
   const [activeTab, setActiveTab] = createSignal(0);
@@ -157,17 +157,28 @@ const SecurityConfiguration: Component = () => {
     setIsModalOpen(true);
   };
 
-  const openAssignModal = () => {
+  const openAssignModal = async () => {
     if (!selectedModeId()) {
       notify.warning("请先选择一个任务维度");
       return;
     }
-    // 过滤掉已经分配的规则 (简单处理，如果不需过滤可去掉)
-    const assignedIds = modeRules().map(r => r.id);
-    const available = rules().filter(r => !assignedIds.includes(r.id));
-    setAvailableRules(available);
-    setSelectedRuleToAssign(null);
-    setIsAssignModalOpen(true);
+
+    // 加载所有策略（不分页）
+    setLoading(true);
+    try {
+      const resp: any = await addonApi.getSecFirewallRules(1, 1000); // 获取最多1000条策略
+      handleResp(resp, (data: any) => {
+        const allRules = data.content || [];
+        // 过滤掉已经分配的规则
+        const assignedIds = modeRules().map(r => r.id);
+        const available = allRules.filter((r: addonApi.SecFirewallRule) => !assignedIds.includes(r.id));
+        setAvailableRules(available);
+        setSelectedRuleToAssign(null);
+        setIsAssignModalOpen(true);
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 排序处理

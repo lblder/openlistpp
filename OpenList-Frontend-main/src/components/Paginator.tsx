@@ -9,21 +9,23 @@ import {
   SelectOption,
   SelectOptionText,
   SelectTrigger,
+  Text,
 } from "@hope-ui/solid"
 import { createMemo, For, mergeProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { FaSolidAngleLeft, FaSolidAngleRight } from "solid-icons/fa"
 import { TbSelector } from "solid-icons/tb"
+import { useT } from "~/hooks"
 
 export interface PaginatorProps {
   colorScheme?:
-    | "primary"
-    | "accent"
-    | "neutral"
-    | "success"
-    | "info"
-    | "warning"
-    | "danger"
+  | "primary"
+  | "accent"
+  | "neutral"
+  | "success"
+  | "info"
+  | "warning"
+  | "danger"
   // size?: "xs" | "sm" | "lg" | "xl" | "md";
   defaultCurrent?: number
   onChange?: (current: number) => void
@@ -47,6 +49,7 @@ export const Paginator = (props: PaginatorProps) => {
     pageSize: merged.defaultPageSize,
     current: merged.defaultCurrent,
   })
+  const t = useT()
   merged.setResetCallback?.(() => {
     setStore("current", merged.defaultCurrent)
   })
@@ -79,110 +82,115 @@ export const Paginator = (props: PaginatorProps) => {
   }
   return (
     <Show when={!merged.hideOnSinglePage || pages() > 1}>
-      <HStack spacing="$1">
-        <Show when={store.current !== 1}>
-          <Button
-            size={size}
-            colorScheme={merged.colorScheme}
-            onClick={() => {
-              onPageChange(1)
-            }}
-            px="$3"
-          >
-            1
-          </Button>
-          <IconButton
-            size={size}
-            icon={<FaSolidAngleLeft />}
-            aria-label="Previous"
-            colorScheme={merged.colorScheme}
-            onClick={() => {
-              onPageChange(store.current - 1)
-            }}
-            w="2rem !important"
-          />
-        </Show>
-        <For each={leftPages()}>
-          {(page) => (
+      <HStack spacing="$4">
+        <Text fontSize="$sm" color="$neutral10">
+          {t("global.total_items", { total: merged.total }, `共 ${merged.total} 条`)}
+        </Text>
+        <HStack spacing="$1">
+          <Show when={store.current !== 1}>
             <Button
               size={size}
               colorScheme={merged.colorScheme}
               onClick={() => {
-                onPageChange(page)
+                onPageChange(1)
               }}
-              px={page > 10 ? "$2_5" : "$3"}
+              px="$3"
             >
-              {page}
+              1
             </Button>
-          )}
-        </For>
-        <Select
-          size={size}
-          variant="unstyled"
-          defaultValue={store.current}
-          onChange={(page) => {
-            onPageChange(+page)
-          }}
-        >
-          <SelectTrigger
-            as={Button}
+            <IconButton
+              size={size}
+              icon={<FaSolidAngleLeft />}
+              aria-label="Previous"
+              colorScheme={merged.colorScheme}
+              onClick={() => {
+                onPageChange(store.current - 1)
+              }}
+              w="2rem !important"
+            />
+          </Show>
+          <For each={leftPages()}>
+            {(page) => (
+              <Button
+                size={size}
+                colorScheme={merged.colorScheme}
+                onClick={() => {
+                  onPageChange(page)
+                }}
+                px={page > 10 ? "$2_5" : "$3"}
+              >
+                {page}
+              </Button>
+            )}
+          </For>
+          <Select
             size={size}
-            width="auto"
-            px="$1"
-            variant="solid"
-            colorScheme={merged.colorScheme}
+            variant="unstyled"
+            defaultValue={store.current}
+            onChange={(page) => {
+              onPageChange(+page)
+            }}
           >
-            <Box px={store.current > 10 ? "$1_5" : "$2"}>{store.current}</Box>
-            <TbSelector />
-          </SelectTrigger>
-          <SelectContent minW="80px">
-            <SelectListbox>
-              <For each={allPages()}>
-                {(page) => (
-                  <SelectOption value={page}>
-                    <SelectOptionText px="$2">{page}</SelectOptionText>
-                  </SelectOption>
-                )}
-              </For>
-            </SelectListbox>
-          </SelectContent>
-        </Select>
-        <For each={rightPages()}>
-          {(page) => (
+            <SelectTrigger
+              as={Button}
+              size={size}
+              width="auto"
+              px="$1"
+              variant="solid"
+              colorScheme={merged.colorScheme}
+            >
+              <Box px={store.current > 10 ? "$1_5" : "$2"}>{store.current}</Box>
+              <TbSelector />
+            </SelectTrigger>
+            <SelectContent minW="80px">
+              <SelectListbox>
+                <For each={allPages()}>
+                  {(page) => (
+                    <SelectOption value={page}>
+                      <SelectOptionText px="$2">{page}</SelectOptionText>
+                    </SelectOption>
+                  )}
+                </For>
+              </SelectListbox>
+            </SelectContent>
+          </Select>
+          <For each={rightPages()}>
+            {(page) => (
+              <Button
+                size={size}
+                colorScheme={merged.colorScheme}
+                onClick={() => {
+                  onPageChange(page)
+                }}
+                px={page > 10 ? "$2_5" : "$3"}
+              >
+                {page}
+              </Button>
+            )}
+          </For>
+          <Show when={store.current !== pages()}>
+            <IconButton
+              size={size}
+              icon={<FaSolidAngleRight />}
+              aria-label="Next"
+              colorScheme={merged.colorScheme}
+              onClick={() => {
+                onPageChange(store.current + 1)
+              }}
+              w="2rem !important"
+            />
             <Button
               size={size}
               colorScheme={merged.colorScheme}
               onClick={() => {
-                onPageChange(page)
+                onPageChange(pages())
               }}
-              px={page > 10 ? "$2_5" : "$3"}
+              px={pages() > 10 ? "$2_5" : "$3"}
             >
-              {page}
+              {pages()}
             </Button>
-          )}
-        </For>
-        <Show when={store.current !== pages()}>
-          <IconButton
-            size={size}
-            icon={<FaSolidAngleRight />}
-            aria-label="Next"
-            colorScheme={merged.colorScheme}
-            onClick={() => {
-              onPageChange(store.current + 1)
-            }}
-            w="2rem !important"
-          />
-          <Button
-            size={size}
-            colorScheme={merged.colorScheme}
-            onClick={() => {
-              onPageChange(pages())
-            }}
-            px={pages() > 10 ? "$2_5" : "$3"}
-          >
-            {pages()}
-          </Button>
-        </Show>
+          </Show>
+        </HStack>
       </HStack>
     </Show>
   )

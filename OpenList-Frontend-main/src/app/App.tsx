@@ -19,7 +19,6 @@ import { base_path, bus, handleRespWithoutAuthAndNotify, r } from "~/utils"
 import { MustUser, UserOrGuest } from "./MustUser"
 import "./index.css"
 import { globalStyles } from "./theme"
-import { StrictlyMustUser } from "./StrictlyMustUser"
 
 const Home = lazy(() => import("~/pages/home/Layout"))
 const Manage = lazy(() => import("~/pages/manage"))
@@ -89,25 +88,25 @@ const App: Component = () => {
             <Route
               path="/@manage/*"
               element={
-                <StrictlyMustUser>
+                <MustUser>
                   <Manage />
-                </StrictlyMustUser>
+                </MustUser>
               }
             />
             <Route
               path="/@tenant/*"
               element={
-                <StrictlyMustUser>
+                <MustUser>
                   <Tenant />
-                </StrictlyMustUser>
+                </MustUser>
               }
             />
             <Route
               path={["/@s/*", "/%40s/*"]}
               element={
-                <StrictlyMustUser>
+                <UserOrGuest>
                   <Home />
-                </StrictlyMustUser>
+                </UserOrGuest>
               }
             />
             <Route
@@ -121,9 +120,9 @@ const App: Component = () => {
             <Route
               path="*"
               element={
-                <StrictlyMustUser>
+                <UserOrGuest>
                   <Home />
-                </StrictlyMustUser>
+                </UserOrGuest>
               }
             />
           </Routes>

@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from flask import Flask, request, jsonify
 
@@ -11,14 +12,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-
-TSHARK_DIR = r"D:\Software\Wireshark"  # 注意这里只写目录，不写 .exe
-
-# 将 Wireshark 目录添加到系统 PATH 环境变量的前面
-os.environ["PATH"] = TSHARK_DIR + os.pathsep + os.environ["PATH"]
-
-# 测试一下是否生效
-logger.info(f"当前 PATH 已包含 Wireshark: {'Wireshark' in os.environ['PATH']}")
+# --- 配置 Tshark 路径 (仅 Windows 需要) ---
+if sys.platform == 'win32':
+    # Windows: 将 Wireshark 目录添加到 PATH
+    TSHARK_DIR = r"D:\Software\Wireshark"  # 可根据实际安装路径修改
+    os.environ["PATH"] = TSHARK_DIR + os.pathsep + os.environ["PATH"]
+    logger.info(f"Windows 系统: 已将 Wireshark 目录添加到 PATH")
+else:
+    # Linux/Mac: tshark 通常已在系统 PATH 中
+    logger.info(f"Linux/Mac 系统: 使用系统 PATH 中的 tshark")
 
 
 # --- 初始化 Flask ---

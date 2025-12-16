@@ -4,13 +4,105 @@ import {
     Button, Input, Textarea, Table, Thead, Tbody, Tr, Th, Td,
     Text, Badge, IconButton, Icon,
     Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-    FormControl, FormLabel, FormErrorMessage
+    FormControl, FormLabel, FormErrorMessage,
+    Select, SelectTrigger, SelectValue, SelectContent, SelectListbox, SelectOption, SelectOptionText,
+    Progress, Alert, AlertIcon, AlertTitle, AlertDescription
 } from "@hope-ui/solid";
-import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave } from "solid-icons/bi";
+import { BiSolidEdit, BiSolidTrash, BiSolidPlusCircle, BiSolidSave, BiSolidFileImport, BiSolidData, BiRegularTime, BiRegularUser, BiRegularDetail } from "solid-icons/bi";
+import { r } from "~/utils";
 import { notify, handleResp } from "~/utils";
 import * as addonApi from "~/utils/addon";
 import { useManageTitle } from "~/hooks";
 import { Paginator } from "~/components/Paginator";
+
+// PCAP Analysis API
+const pcapApi = {
+    listFiles: async () => {
+        return r.get("/keti1/pcap/list")
+    },
+    parseFile: async (filename: string) => {
+        return r.post("/keti1/pcap/parse", { filename })
+    },
+}
+
+interface ParsingConfig {
+    id: string
+    name: string
+    sourceFormat: string
+    targetFormat: string
+    parserType: string
+    status: "active" | "inactive"
+}
+
+interface TransformationConfig {
+    id: string
+    name: string
+    sourceStructure: string
+    targetStructure: string
+    mappingRule: string
+    status: "active" | "inactive"
+}
+
+interface AuditLog {
+    id: string
+    timestamp: string
+    operator: string
+    action: string
+    target: string
+    result: "success" | "failure"
+}
+
+// PCAP Analysis interfaces
+interface PcapPacketItem {
+    address: string
+    value: any
+    type: string
+    description?: string
+    other?: Record<string, any>
+}
+
+interface PcapPacket {
+    packet_no: string
+    timestamp: string
+    src_ip: string
+    dst_ip: string
+    protocol: string
+    info: string
+    items: PcapPacketItem[]
+    other?: Record<string, any>
+}
+
+interface PcapParseResult {
+    data: PcapPacket[]
+    meta: {
+        filename: string
+        total_scanned: number
+        valid_packets: number
+    }
+}
+
+// 模拟静态数据
+const mockParsingConfigs: ParsingConfig[] = [
+    { id: "parse-01", name: "XML到JSON解析器", sourceFormat: "XML", targetFormat: "JSON", parserType: "结构化解析", status: "active" },
+    { id: "parse-02", name: "CSV到数据库解析器", sourceFormat: "CSV", targetFormat: "Database", parserType: "批量导入", status: "active" },
+    { id: "parse-03", name: "日志文件解析器", sourceFormat: "Log", targetFormat: "Structured Data", parserType: "正则表达式", status: "inactive" },
+    { id: "parse-04", name: "二进制数据解析器", sourceFormat: "Binary", targetFormat: "Hex", parserType: "字节流解析", status: "active" },
+]
+
+const mockTransformationConfigs: TransformationConfig[] = [
+    { id: "trans-01", name: "传感器数据标准化", sourceStructure: "Raw Sensor Data", targetStructure: "Standardized Format", mappingRule: "字段映射+单位转换", status: "active" },
+    { id: "trans-02", name: "设备数据聚合", sourceStructure: "Device Metrics", targetStructure: "Aggregated Data", mappingRule: "时间窗口聚合", status: "active" },
+    { id: "trans-03", name: "异常数据清洗", sourceStructure: "Raw Data", targetStructure: "Clean Data", mappingRule: "异常值识别与剔除", status: "inactive" },
+    { id: "trans-04", name: "数据脱敏处理", sourceStructure: "Sensitive Data", targetStructure: "Anonymized Data", mappingRule: "字段加密/替换", status: "active" },
+]
+
+const mockAuditLogs: AuditLog[] = [
+    { id: "audit-01", timestamp: "2023-06-01 10:05:22", operator: "admin", action: "新增解析配置", target: "XMLParser", result: "success" },
+    { id: "audit-02", timestamp: "2023-06-01 11:30:15", operator: "user1", action: "执行数据转换", target: "SensorData.json", result: "success" },
+    { id: "audit-03", timestamp: "2023-06-02 09:12:44", operator: "admin", action: "删除结构定义", target: "LegacyStruct", result: "failure" },
+    { id: "audit-04", timestamp: "2023-06-02 15:45:30", operator: "manager", action: "导出审计日志", target: "All Logs", result: "success" },
+    { id: "audit-05", timestamp: "2023-06-03 08:20:10", operator: "system", action: "自动备份", target: "Database", result: "success" },
+]
 
 // 类型定义 - 与后端 addon_models.go 保持一致
 
@@ -50,7 +142,7 @@ interface ICSDevicePoint {
 }
 
 const DataSecurityManagement: Component = () => {
-    useManageTitle("数据安全管理");
+    useManageTitle("数据管理");
 
     // 标签页状态
     const [activeTab, setActiveTab] = createSignal(0);
@@ -110,7 +202,68 @@ const DataSecurityManagement: Component = () => {
     const [pointPageSize, setPointPageSize] = createSignal(7);
     const [pointTotal, setPointTotal] = createSignal(0);
 
+    // Data Migration States
+    const [pcapFiles, setPcapFiles] = createSignal<string[]>([]);
+    const [selectedFile, setSelectedFile] = createSignal("");
+    const [parseResult, setParseResult] = createSignal<PcapParseResult | null>(null);
+    const [parsing, setParsing] = createSignal(false);
+    const [expandedPackets, setExpandedPackets] = createSignal<Set<string>>(new Set());
+
+    const [transformationForm, setTransformationForm] = createSignal<TransformationConfig>({
+        id: "", name: "", sourceStructure: "", targetStructure: "", mappingRule: "", status: "active"
+    });
+    const [parsingForm, setParsingForm] = createSignal<ParsingConfig>({
+        id: "", name: "", sourceFormat: "", targetFormat: "", parserType: "", status: "active"
+    });
+    const [currentTransformation, setCurrentTransformation] = createSignal<TransformationConfig | null>(null);
+    const [currentParsing, setCurrentParsing] = createSignal<ParsingConfig | null>(null);
+
     // 加载数据
+
+
+    // 加载数据
+    const loadPcapFiles = async () => {
+        // setLoading(true); // Avoid global loading for background fetch
+        const resp = await pcapApi.listFiles();
+        handleResp(resp, (data: any) => {
+            setPcapFiles(data || []);
+        });
+        // setLoading(false);
+    };
+
+    const handleParsePcap = async () => {
+        if (!selectedFile()) {
+            notify.warning("请先选择 PCAP 文件");
+            return;
+        }
+
+        setParsing(true);
+        setParseResult(null);
+        const resp = await pcapApi.parseFile(selectedFile());
+        handleResp(resp, (result: any) => {
+            setParseResult(result as PcapParseResult);
+            notify.success(`解析完成！共扫描 ${result.meta?.total_scanned || 0} 个数据包，识别 ${result.meta?.valid_packets || 0} 个有效包`);
+        }, (msg: string) => {
+            notify.error(msg || "解析失败");
+        });
+        setParsing(false);
+    };
+
+    const togglePacketExpansion = (packetNo: string) => {
+        const expanded = new Set(expandedPackets());
+        if (expanded.has(packetNo)) {
+            expanded.delete(packetNo);
+        } else {
+            expanded.add(packetNo);
+        }
+        setExpandedPackets(expanded);
+    };
+
+    const deleteMockConfig = async (id: string) => {
+        if (confirm("确定要删除此项配置吗？")) {
+            notify.success("删除成功");
+        }
+    }
 
 
     const loadProtocols = async (page = protocolPage(), size = protocolPageSize()) => {
@@ -166,6 +319,7 @@ const DataSecurityManagement: Component = () => {
         loadProtocols();
         loadDevices();
         loadPoints();
+        loadPcapFiles();
     });
 
     // 表单验证
@@ -368,6 +522,12 @@ const DataSecurityManagement: Component = () => {
         } else if (activeTab() === 2) {
             setCurrentPoint(null);
             setPointForm({ point_name: "", device_id: 0, point_type: "", address: "", unit: "", tags: "", status: 1 });
+        } else if (activeTab() === 3) {
+            setCurrentTransformation(null);
+            setTransformationForm({ id: "", name: "", sourceStructure: "", targetStructure: "", mappingRule: "", status: "active" });
+        } else if (activeTab() === 4) {
+            setCurrentParsing(null);
+            setParsingForm({ id: "", name: "", sourceFormat: "", targetFormat: "", parserType: "", status: "active" });
         }
         setIsModalOpen(true);
     };
@@ -383,6 +543,12 @@ const DataSecurityManagement: Component = () => {
         } else if (activeTab() === 2) {
             setCurrentPoint(item);
             setPointForm({ ...item });
+        } else if (activeTab() === 3) {
+            setCurrentTransformation(item);
+            setTransformationForm({ ...item });
+        } else if (activeTab() === 4) {
+            setCurrentParsing(item);
+            setParsingForm({ ...item });
         }
         setIsModalOpen(true);
     };
@@ -392,9 +558,15 @@ const DataSecurityManagement: Component = () => {
     };
 
     const getModalTitle = () => {
-        const action = currentProtocol() || currentDevice() || currentPoint() ? "编辑" : "新增";
-        const type = activeTab() === 0 ? "工控协议" : activeTab() === 1 ? "工控设备" : "设备场量点";
-        return `${action}${type}`;
+        const action = currentProtocol() || currentDevice() || currentPoint() || currentTransformation() || currentParsing() ? "编辑" : "新增";
+        const typeMap: { [key: number]: string } = {
+            0: "工控协议",
+            1: "工控设备",
+            2: "设备场量点",
+            3: "数据转换配置",
+            4: "数据解析配置"
+        };
+        return `${action}${typeMap[activeTab()] || ""}`;
     };
 
     return (
@@ -407,10 +579,15 @@ const DataSecurityManagement: Component = () => {
                         <Button variant={activeTab() === 0 ? "solid" : "ghost"} colorScheme={activeTab() === 0 ? "primary" : "neutral"} onClick={() => setActiveTab(0)}>工控协议管理</Button>
                         <Button variant={activeTab() === 1 ? "solid" : "ghost"} colorScheme={activeTab() === 1 ? "primary" : "neutral"} onClick={() => setActiveTab(1)}>工控设备管理</Button>
                         <Button variant={activeTab() === 2 ? "solid" : "ghost"} colorScheme={activeTab() === 2 ? "primary" : "neutral"} onClick={() => setActiveTab(2)}>设备场量点管理</Button>
+                        <Button variant={activeTab() === 3 ? "solid" : "ghost"} colorScheme={activeTab() === 3 ? "primary" : "neutral"} onClick={() => setActiveTab(3)}>数据转换</Button>
+                        <Button variant={activeTab() === 4 ? "solid" : "ghost"} colorScheme={activeTab() === 4 ? "primary" : "neutral"} onClick={() => setActiveTab(4)}>数据解析</Button>
+                        <Button variant={activeTab() === 5 ? "solid" : "ghost"} colorScheme={activeTab() === 5 ? "primary" : "neutral"} onClick={() => setActiveTab(5)}>数据审计</Button>
                     </HStack>
-                    <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddModal}>
-                        新增
-                    </Button>
+                    <Show when={activeTab() !== 5}>
+                        <Button leftIcon={<Icon as={BiSolidPlusCircle} />} colorScheme="primary" onClick={openAddModal}>
+                            新增
+                        </Button>
+                    </Show>
                 </HStack>
 
                 {/* 安全策略管理面板 */}
@@ -570,6 +747,233 @@ const DataSecurityManagement: Component = () => {
                             colorScheme="primary"
                         />
                     </HStack>
+                </Show>
+
+                {/* 数据转换管理面板 */}
+                <Show when={activeTab() === 3}>
+                    <Box overflowX="auto" borderWidth="1px" borderRadius="$lg">
+                        <Table dense>
+                            <Thead>
+                                <Tr>
+                                    <Th>名称</Th>
+                                    <Th>源结构</Th>
+                                    <Th>目标结构</Th>
+                                    <Th>映射规则</Th>
+                                    <Th>状态</Th>
+                                    <Th>操作</Th>
+                                </Tr>
+                            </Thead>
+                            <Tbody>
+                                <For each={mockTransformationConfigs}>
+                                    {(item) => (
+                                        <Tr>
+                                            <Td>{item.name}</Td>
+                                            <Td>{item.sourceStructure}</Td>
+                                            <Td>{item.targetStructure}</Td>
+                                            <Td>{item.mappingRule}</Td>
+                                            <Td><Badge colorScheme={item.status === 'active' ? 'success' : 'neutral'}>{item.status}</Badge></Td>
+                                            <Td>
+                                                <HStack spacing="$2">
+                                                    <IconButton aria-label="编辑" icon={<BiSolidEdit />} size="sm" onClick={() => openEditModal(item)} />
+                                                    <IconButton aria-label="删除" icon={<BiSolidTrash />} colorScheme="danger" size="sm" onClick={() => deleteMockConfig(item.id)} />
+                                                </HStack>
+                                            </Td>
+                                        </Tr>
+                                    )}
+                                </For>
+                            </Tbody>
+                        </Table>
+                    </Box>
+                </Show>
+
+                {/* 数据解析管理面板 */}
+                <Show when={activeTab() === 4}>
+                    <VStack spacing="$4" alignItems="stretch">
+                        {/* PCAP 解析工具 */}
+                        <Box p="$4" borderWidth="1px" borderRadius="$lg" bg="$neutral2">
+                            <Text fontWeight="bold" mb="$4">PCAP 文件解析</Text>
+                            <HStack spacing="$4" alignItems="flex-start">
+                                <VStack w="35%" spacing="$4">
+                                    <FormControl>
+                                        <FormLabel>选择 PCAP 文件</FormLabel>
+                                        <Select value={selectedFile()} onChange={setSelectedFile}>
+                                            <SelectTrigger><SelectValue placeholder="请选择文件" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectListbox>
+                                                    <Show when={pcapFiles().length === 0}>
+                                                        <SelectOption value="" disabled><SelectOptionText>暂无文件</SelectOptionText></SelectOption>
+                                                    </Show>
+                                                    <For each={pcapFiles()}>
+                                                        {(file) => (
+                                                            <SelectOption value={file}>
+                                                                <SelectOptionText>{file}</SelectOptionText>
+                                                            </SelectOption>
+                                                        )}
+                                                    </For>
+                                                </SelectListbox>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <Button
+                                        colorScheme="primary"
+                                        w="$full"
+                                        onClick={handleParsePcap}
+                                        loading={parsing()}
+                                        disabled={!selectedFile()}
+                                    >
+                                        开始解析
+                                    </Button>
+                                    <Show when={parseResult()}>
+                                        <VStack w="$full" spacing="$2" p="$3" bg="$success2" borderRadius="$md">
+                                            <Text fontSize="$sm" fontWeight="bold">解析统计</Text>
+                                            <HStack justifyContent="space-between" w="$full">
+                                                <Text fontSize="$xs">文件名:</Text>
+                                                <Text fontSize="$xs" fontWeight="bold">{parseResult()?.meta?.filename}</Text>
+                                            </HStack>
+                                            <HStack justifyContent="space-between" w="$full">
+                                                <Text fontSize="$xs">总包数:</Text>
+                                                <Badge colorScheme="info">{parseResult()?.meta?.total_scanned || 0}</Badge>
+                                            </HStack>
+                                            <HStack justifyContent="space-between" w="$full">
+                                                <Text fontSize="$xs">有效包:</Text>
+                                                <Badge colorScheme="success">{parseResult()?.meta?.valid_packets || 0}</Badge>
+                                            </HStack>
+                                        </VStack>
+                                    </Show>
+                                </VStack>
+
+                                <Box w="65%" borderWidth="1px" borderRadius="$md" p="$4" bg="$background" maxH="500px" overflowY="auto">
+                                    <Show when={!parseResult()} fallback={
+                                        <VStack alignItems="stretch" spacing="$2">
+                                            <Text fontWeight="bold" mb="$2">解析结果 ({parseResult()?.data?.length || 0} 个数据包)</Text>
+                                            <Table dense>
+                                                <Thead>
+                                                    <Tr>
+                                                        <Th>包号</Th>
+                                                        <Th>协议</Th>
+                                                        <Th>源IP</Th>
+                                                        <Th>目标IP</Th>
+                                                        <Th>信息</Th>
+                                                        <Th>详情</Th>
+                                                    </Tr>
+                                                </Thead>
+                                                <Tbody>
+                                                    <For each={parseResult()?.data?.slice(0, 50)}>
+                                                        {(packet) => (
+                                                            <>
+                                                                <Tr>
+                                                                    <Td>{packet.packet_no}</Td>
+                                                                    <Td>
+                                                                        <Badge colorScheme={
+                                                                            packet.protocol.includes('Modbus') ? 'primary' :
+                                                                                packet.protocol.includes('S7') ? 'success' :
+                                                                                    packet.protocol.includes('Omron') ? 'warning' :
+                                                                                        packet.protocol.includes('CIP') ? 'info' : 'neutral'
+                                                                        }>
+                                                                            {packet.protocol}
+                                                                        </Badge>
+                                                                    </Td>
+                                                                    <Td fontSize="$xs">{packet.src_ip}</Td>
+                                                                    <Td fontSize="$xs">{packet.dst_ip}</Td>
+                                                                    <Td fontSize="$xs">{packet.info}</Td>
+                                                                    <Td>
+                                                                        <IconButton
+                                                                            aria-label="展开详情"
+                                                                            icon={<BiRegularDetail />}
+                                                                            size="xs"
+                                                                            variant="ghost"
+                                                                            onClick={() => togglePacketExpansion(packet.packet_no)}
+                                                                        />
+                                                                    </Td>
+                                                                </Tr>
+                                                                <Show when={expandedPackets().has(packet.packet_no)}>
+                                                                    <Tr>
+                                                                        <Td colSpan={6} bg="$neutral2">
+                                                                            <VStack alignItems="stretch" spacing="$2" p="$2">
+                                                                                <Text fontSize="$xs" fontWeight="bold">数据项 ({packet.items?.length || 0}):</Text>
+                                                                                <Table dense>
+                                                                                    <Thead>
+                                                                                        <Tr>
+                                                                                            <Th>地址</Th>
+                                                                                            <Th>值</Th>
+                                                                                            <Th>类型</Th>
+                                                                                            <Th>描述</Th>
+                                                                                        </Tr>
+                                                                                    </Thead>
+                                                                                    <Tbody>
+                                                                                        <For each={packet.items}>
+                                                                                            {(item) => (
+                                                                                                <Tr>
+                                                                                                    <Td fontSize="$xs">{item.address}</Td>
+                                                                                                    <Td fontSize="$xs" fontFamily="monospace">{String(item.value)}</Td>
+                                                                                                    <Td fontSize="$xs"><Badge size="xs">{item.type}</Badge></Td>
+                                                                                                    <Td fontSize="$xs">{item.description || '-'}</Td>
+                                                                                                </Tr>
+                                                                                            )}
+                                                                                        </For>
+                                                                                    </Tbody>
+                                                                                </Table>
+                                                                            </VStack>
+                                                                        </Td>
+                                                                    </Tr>
+                                                                </Show>
+                                                            </>
+                                                        )}
+                                                    </For>
+                                                </Tbody>
+                                            </Table>
+                                            <Show when={(parseResult()?.data?.length || 0) > 50}>
+                                                <Text fontSize="$xs" color="$neutral10" textAlign="center" mt="$2">
+                                                    仅显示前 50 个数据包
+                                                </Text>
+                                            </Show>
+                                        </VStack>
+                                    }>
+                                        <VStack spacing="$2" alignItems="center" justifyContent="center" minH="200px">
+                                            <Text fontSize="$sm" color="$neutral10">请选择文件并点击"开始解析"</Text>
+                                            <Text fontSize="$xs" color="$neutral9">支持 Modbus, S7Comm, Omron FINS, CIP 协议</Text>
+                                        </VStack>
+                                    </Show>
+                                </Box>
+                            </HStack>
+                        </Box>
+
+
+                    </VStack>
+                </Show>
+
+                {/* 数据审计管理面板 */}
+                <Show when={activeTab() === 5}>
+                    <Box borderWidth="1px" borderRadius="$lg" overflowX="auto" p="$4">
+                        <Table dense>
+                            <Thead>
+                                <Tr>
+                                    <Th>时间</Th>
+                                    <Th>操作人</Th>
+                                    <Th>动作</Th>
+                                    <Th>对象</Th>
+                                    <Th>结果</Th>
+                                    <Th>详情</Th>
+                                </Tr>
+                            </Thead>
+                            <Tbody>
+                                <For each={mockAuditLogs}>
+                                    {(log) => (
+                                        <Tr>
+                                            <Td><HStack spacing="$1"><Icon as={BiRegularTime} color="$neutral10" /><Text>{log.timestamp}</Text></HStack></Td>
+                                            <Td><HStack spacing="$1"><Icon as={BiRegularUser} color="$neutral10" /><Text>{log.operator}</Text></HStack></Td>
+                                            <Td>{log.action}</Td>
+                                            <Td>{log.target}</Td>
+                                            <Td><Badge colorScheme={log.result === 'success' ? 'success' : 'danger'}>{log.result}</Badge></Td>
+                                            <Td>
+                                                <IconButton aria-label="查看详情" icon={<BiRegularDetail />} size="sm" variant="ghost" />
+                                            </Td>
+                                        </Tr>
+                                    )}
+                                </For>
+                            </Tbody>
+                        </Table>
+                    </Box>
                 </Show>
             </VStack>
 
@@ -775,6 +1179,69 @@ const DataSecurityManagement: Component = () => {
                                     </select>
                                 </FormControl>
                             </Show>
+
+                            {/* 数据转换表单 */}
+                            <Show when={activeTab() === 3}>
+                                <FormControl>
+                                    <FormLabel>源结构</FormLabel>
+                                    <Input
+                                        value={transformationForm().sourceStructure}
+                                        onInput={(e) => setTransformationForm({ ...transformationForm(), sourceStructure: e.currentTarget.value })}
+                                    />
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel>目标结构</FormLabel>
+                                    <Input
+                                        value={transformationForm().targetStructure}
+                                        onInput={(e) => setTransformationForm({ ...transformationForm(), targetStructure: e.currentTarget.value })}
+                                    />
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel>映射规则</FormLabel>
+                                    <Textarea
+                                        value={transformationForm().mappingRule}
+                                        onInput={(e) => setTransformationForm({ ...transformationForm(), mappingRule: e.currentTarget.value })}
+                                    />
+                                </FormControl>
+                            </Show>
+
+                            {/* 数据解析表单 */}
+                            <Show when={activeTab() === 4}>
+                                <FormControl>
+                                    <FormLabel>源格式</FormLabel>
+                                    <Input
+                                        value={parsingForm().sourceFormat}
+                                        onInput={(e) => setParsingForm({ ...parsingForm(), sourceFormat: e.currentTarget.value })}
+                                    />
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel>目标格式</FormLabel>
+                                    <Input
+                                        value={parsingForm().targetFormat}
+                                        onInput={(e) => setParsingForm({ ...parsingForm(), targetFormat: e.currentTarget.value })}
+                                    />
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel>解析类型</FormLabel>
+                                    <Select value={parsingForm().parserType} onChange={(val) => setParsingForm({ ...parsingForm(), parserType: val })}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectListbox>
+                                                <SelectOption value="结构化解析"><SelectOptionText>结构化解析</SelectOptionText></SelectOption>
+                                                <SelectOption value="批量导入"><SelectOptionText>批量导入</SelectOptionText></SelectOption>
+                                                <SelectOption value="正则表达式"><SelectOptionText>正则表达式</SelectOptionText></SelectOption>
+                                                <SelectOption value="字节流解析"><SelectOptionText>字节流解析</SelectOptionText></SelectOption>
+                                            </SelectListbox>
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
+                            </Show>
                         </VStack>
                     </ModalBody>
                     <ModalFooter>
@@ -785,6 +1252,11 @@ const DataSecurityManagement: Component = () => {
                                     if (activeTab() === 0) handleProtocolSubmit();
                                     else if (activeTab() === 1) handleDeviceSubmit();
                                     else if (activeTab() === 2) handlePointSubmit();
+                                    else if (activeTab() === 3 || activeTab() === 4) {
+                                        // Mock save
+                                        notify.success("保存成功");
+                                        closeModal();
+                                    }
                                 }}
                                 loading={loading()}
                                 leftIcon={<Icon as={BiSolidSave} />}
