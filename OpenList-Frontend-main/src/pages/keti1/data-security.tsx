@@ -82,28 +82,6 @@ interface PcapParseResult {
     }
 }
 
-// 模拟静态数据
-const mockParsingConfigs: ParsingConfig[] = [
-    { id: "parse-01", name: "XML到JSON解析器", sourceFormat: "XML", targetFormat: "JSON", parserType: "结构化解析", status: "active" },
-    { id: "parse-02", name: "CSV到数据库解析器", sourceFormat: "CSV", targetFormat: "Database", parserType: "批量导入", status: "active" },
-    { id: "parse-03", name: "日志文件解析器", sourceFormat: "Log", targetFormat: "Structured Data", parserType: "正则表达式", status: "inactive" },
-    { id: "parse-04", name: "二进制数据解析器", sourceFormat: "Binary", targetFormat: "Hex", parserType: "字节流解析", status: "active" },
-]
-
-const mockTransformationConfigs: TransformationConfig[] = [
-    { id: "trans-01", name: "传感器数据标准化", sourceStructure: "Raw Sensor Data", targetStructure: "Standardized Format", mappingRule: "字段映射+单位转换", status: "active" },
-    { id: "trans-02", name: "设备数据聚合", sourceStructure: "Device Metrics", targetStructure: "Aggregated Data", mappingRule: "时间窗口聚合", status: "active" },
-    { id: "trans-03", name: "异常数据清洗", sourceStructure: "Raw Data", targetStructure: "Clean Data", mappingRule: "异常值识别与剔除", status: "inactive" },
-    { id: "trans-04", name: "数据脱敏处理", sourceStructure: "Sensitive Data", targetStructure: "Anonymized Data", mappingRule: "字段加密/替换", status: "active" },
-]
-
-const mockAuditLogs: AuditLog[] = [
-    { id: "audit-01", timestamp: "2023-06-01 10:05:22", operator: "admin", action: "新增解析配置", target: "XMLParser", result: "success" },
-    { id: "audit-02", timestamp: "2023-06-01 11:30:15", operator: "user1", action: "执行数据转换", target: "SensorData.json", result: "success" },
-    { id: "audit-03", timestamp: "2023-06-02 09:12:44", operator: "admin", action: "删除结构定义", target: "LegacyStruct", result: "failure" },
-    { id: "audit-04", timestamp: "2023-06-02 15:45:30", operator: "manager", action: "导出审计日志", target: "All Logs", result: "success" },
-    { id: "audit-05", timestamp: "2023-06-03 08:20:10", operator: "system", action: "自动备份", target: "Database", result: "success" },
-]
 
 // 类型定义 - 与后端 addon_models.go 保持一致
 
@@ -572,7 +550,7 @@ const DataSecurityManagement: Component = () => {
 
     return (
         <VStack spacing="$4" alignItems="stretch" w="$full">
-            <Text fontSize="$xl" fontWeight="$bold">众测数据保障系统</Text>
+            <Text fontSize="$xl" fontWeight="$bold">数据管理</Text>
 
             <VStack spacing="$4" alignItems="stretch">
                 <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2" justifyContent="space-between">

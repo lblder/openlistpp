@@ -358,7 +358,7 @@ const SecurityConfiguration: Component = () => {
   return (
     <VStack spacing="$4" alignItems="stretch" w="$full" h="$full">
       <HStack justifyContent="space-between">
-        <Text fontSize="$xl" fontWeight="$bold">系统安全配置与策略管理</Text>
+        <Text fontSize="$xl" fontWeight="$bold">数据保障</Text>
       </HStack>
 
       <HStack spacing="$2" borderBottom="1px solid $neutral6" pb="$2" justifyContent="space-between">
